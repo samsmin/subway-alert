@@ -120,7 +120,6 @@
       <div class="dot on" id="gpsAutoDot"></div>
       <span id="gpsAutoStatus" style="flex:1;">GPS로 현재역을 자동으로 찾는 중...</span>
     </div>
-    <span id="autoLineLink" style="display:none; color:var(--amber); text-decoration:underline; cursor:pointer; font-size:12px; margin-left:18px;">자동 감지로 전환</span>
     <div class="board" id="nextStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
       <div class="lbl">다음 역</div>
       <div id="nextStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
@@ -137,12 +136,9 @@
       <span>목적지: <b id="sumDst">-</b></span>
     </div>
     <button class="btn btn-amber" id="pickStartBtn" disabled>이 경로로 알림 시작</button>
-
-    <div class="section-title">호선 직접 지정 (환승역 등, 선택사항)</div>
-    <div class="line-chips" id="lineChips"></div>
     <button class="btn btn-outline" id="gpsPauseBtn" style="margin-top:14px;">자동 추적 일시정지</button>
 
-    <div class="hint">현재역은 GPS로 자동 감지돼요 — 목적지만 고르면 돼요. 환승역처럼 호선이 여러 개면 위에서 직접 골라 고정할 수 있어요. GPS가 안 되면(지하 구간 등) "현재역 수동 선택"을 쓰세요.</div>
+    <div class="hint">현재역은 GPS로 자동 감지돼요 — 목적지만 고르면 돼요. GPS가 안 되면(지하 구간 등) "현재역 수동 선택"을 쓰세요.</div>
   </div>
 </div>
 
@@ -638,7 +634,7 @@ document.addEventListener('click', (e)=>{
 
 /* ---------- Line chips + diagram picker ---------- */
 let pickLine = null, pickMode = 'dest', pickedCur = null, pickedDst = null;
-let pickWatchId = null, autoTrackPaused = false, manualLineOverride = false;
+let pickWatchId = null, autoTrackPaused = false;
 
 function haversinePick(a,b){
   const R=6371000;
@@ -678,8 +674,6 @@ function updateNextStationDisplay(){
   }
   $('nextStationBoard').style.display = 'block';
   $('nextStationLine').innerHTML =
-    `<span style="font-size:14px; color:var(--muted);">${stationLabel(pickedCur)}</span>` +
-    `<span style="font-size:14px; color:var(--muted); margin:0 6px;">-></span>` +
     `<span style="font-size:22px; font-weight:700; color:var(--amber);">${stationLabel(next.name)}</span>`;
 }
 
@@ -693,33 +687,24 @@ function startPickWatch(){
     const cur = {lat:pos.coords.latitude, lng:pos.coords.longitude};
 
     let best = null, bestD = Infinity;
-    if(manualLineOverride && pickLine){
-      // 수동으로 호선을 고정한 경우: 그 호선 안에서만 가장 가까운 역을 찾음
-      LINES[pickLine].stations.forEach(s=>{
-        const d = haversinePick(cur, s);
-        if(d < bestD){ bestD = d; best = {code:pickLine, name:s.name, lat:s.lat, lng:s.lng}; }
-      });
-    } else {
-      // 전 노선 통틀어 가장 가까운 역을 자동으로 찾음 (호선 선택 불필요)
-      FLAT_STATIONS.forEach(s=>{
-        const d = haversinePick(cur, s);
-        if(d < bestD){ bestD = d; best = s; }
-      });
-    }
+    FLAT_STATIONS.forEach(s=>{
+      const d = haversinePick(cur, s);
+      if(d < bestD){ bestD = d; best = s; }
+    });
 
     if(best && bestD < 1000){
       $('gpsAutoDot').className = 'dot on';
       const lineChanged = pickLine !== best.code;
       const curChanged = pickedCur !== best.name;
       if(lineChanged || curChanged){
-        if(lineChanged && !manualLineOverride){
+        if(lineChanged){
           pickLine = best.code;
           if(!(pickedDst && LINES[pickLine].stations.some(s=>s.name===pickedDst))){
             pickedDst = recentDestinations[pickLine] || null;
           }
         }
         pickedCur = best.name;
-        renderChips(); renderDiagram(); updatePickSummary();
+        renderDiagram(); updatePickSummary();
         updateNextStationDisplay();
       }
       $('gpsAutoStatus').textContent = `현재역: "${best.name}"(${LINES[best.code].name}) · 약 ${Math.round(bestD)}m`;
@@ -729,7 +714,7 @@ function startPickWatch(){
     }
   }, err=>{
     $('gpsAutoDot').className = 'dot off';
-    $('gpsAutoStatus').textContent = 'GPS 권한이 없거나 신호가 없어요. 호선을 눌러 직접 선택하세요.';
+    $('gpsAutoStatus').textContent = 'GPS 권한이 없거나 신호가 없어요. "현재역 수동 선택"을 쓰세요.';
   }, {enableHighAccuracy:true, maximumAge:3000, timeout:10000});
 }
 
@@ -737,36 +722,12 @@ function selectLine(code, opts){
   opts = opts || {};
   const L = LINES[code];
   pickLine = code; pickedCur=null; pickedDst=null; pickMode='dest'; autoTrackPaused=false;
-  manualLineOverride = true;
-  $('gpsPauseBtn').textContent = '자동 추적 일시정지';
-  $('autoLineLink').style.display = 'inline';
   const recent = opts.dest || recentDestinations[code];
   if(recent && L.stations.some(s=>s.name===recent)){
     pickedDst = recent;
   }
-  renderChips(); renderDiagram(); updateModeBtns(); updatePickSummary(); closeDiagram();
+  renderDiagram(); updateModeBtns(); updatePickSummary(); closeDiagram();
   startPickWatch();
-}
-
-$('autoLineLink').addEventListener('click', ()=>{
-  manualLineOverride = false;
-  $('autoLineLink').style.display = 'none';
-  $('gpsAutoStatus').textContent = 'GPS로 현재역을 자동으로 찾는 중...';
-  startPickWatch();
-});
-
-function renderChips(){
-  const wrap = $('lineChips');
-  wrap.innerHTML = '';
-  Object.keys(LINES).forEach(code=>{
-    const L = LINES[code];
-    const c = document.createElement('div');
-    c.className = 'chip' + (pickLine===code ? ' active':'');
-    c.style.background = L.color;
-    c.textContent = L.name;
-    c.addEventListener('click', ()=> selectLine(code));
-    wrap.appendChild(c);
-  });
 }
 
 /* ---------- Recent destination memory ---------- */
@@ -931,8 +892,6 @@ $('pickStartBtn').addEventListener('click', ()=>{
   startRunning({ stations: seg.map(s=>({name:s.name, lat:s.lat, lng:s.lng})) });
   showScreen('alert');
 });
-
-renderChips();
 
 /* ---------- Permission status helper ---------- */
 function permHint(state){
