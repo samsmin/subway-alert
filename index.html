@@ -80,39 +80,37 @@
     <span id="gpsAutoStatus" style="flex:1;">GPS로 현재역을 자동으로 찾는 중...</span>
   </div>
 
-  <div class="board" id="stopsLeftBoard" style="display:none; margin-top:10px;">
+  <div class="board" id="stopsLeftBoard" style="margin-top:10px;">
     <div class="lbl">남은 정거장</div>
     <div class="count" id="stopsLeft">-</div>
     <div class="unit">정거장 남음</div>
   </div>
 
-  <div id="pickSelectArea">
-    <div class="board" id="nextStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
-      <div class="lbl">다음역</div>
-      <div id="nextStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
-    </div>
-    <div class="board" id="destStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
-      <div class="lbl">도착역</div>
-      <div id="destStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
-    </div>
+  <div class="board" id="nextStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
+    <div class="lbl">다음역</div>
+    <div id="nextStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
+  </div>
+  <div class="board" id="destStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
+    <div class="lbl">도착역</div>
+    <div id="destStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
+  </div>
 
-    <div class="mode-row">
-      <div class="mode-btn dst active" id="modeDstBtn">목적지 선택</div>
-    </div>
-    <div id="destPicker" style="display:none;">
-      <div class="line-chips" id="lineChips"></div>
-      <div class="diagram" id="diagram"></div>
-      <button class="btn btn-ghost" id="diagramCloseBtn">닫기</button>
-    </div>
+  <div class="mode-row">
+    <div class="mode-btn dst active" id="modeDstBtn">목적지 선택</div>
+  </div>
+  <div id="destPicker" style="display:none;">
+    <div class="line-chips" id="lineChips"></div>
+    <div class="diagram" id="diagram"></div>
+    <button class="btn btn-ghost" id="diagramCloseBtn">닫기</button>
+  </div>
 
-    <div id="recentQuickStart" style="display:none;">
-      <div class="section-title">최근 목적지</div>
-      <div class="board" style="text-align:left; padding:16px 18px;">
-        <div class="lbl" id="recentLineLabel">-</div>
-        <div class="dest" id="recentDestLabel" style="font-size:20px; margin:8px 0 0;">-</div>
-      </div>
-      <button class="btn btn-amber" id="recentStartBtn">GPS로 현재역 찾아서 시작</button>
+  <div id="recentQuickStart" style="display:none;">
+    <div class="section-title">최근 목적지</div>
+    <div class="board" style="text-align:left; padding:16px 18px;">
+      <div class="lbl" id="recentLineLabel">-</div>
+      <div class="dest" id="recentDestLabel" style="font-size:20px; margin:8px 0 0;">-</div>
     </div>
+    <button class="btn btn-amber" id="recentStartBtn">GPS로 현재역 찾아서 시작</button>
   </div>
 
   <button class="btn btn-amber" id="pickStartBtn" disabled>시작</button>
@@ -892,8 +890,6 @@ function startWatch(){
 
 function startRunning(route){
   running = { route, destIndex: route.stations.length-1, currentIndex:0, watchId:null };
-  $('pickSelectArea').style.display='none';
-  $('stopsLeftBoard').style.display='block';
   $('stopsLeftBoard').classList.remove('flash');
   $('stopsLeft').classList.remove('imminent');
   updateBoard();
@@ -907,9 +903,9 @@ function startRunning(route){
 function stopRunning(){
   if(running && running.watchId!=null) navigator.geolocation.clearWatch(running.watchId);
   running = null;
-  $('stopsLeftBoard').style.display='none';
   $('stopsLeftBoard').classList.remove('flash');
-  $('pickSelectArea').style.display='block';
+  $('stopsLeft').textContent = '-';
+  $('stopsLeft').classList.remove('imminent');
   updatePickStartBtn();
   startPickWatch();
 }
