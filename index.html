@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>하차 알림</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0B0E14">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<style>
+  :root{
+    --bg:#0B0E14; --panel:#131826; --panel2:#171E2E; --line:#232A3D;
+    --amber:#F2A93B; --teal:#34C3A6; --red:#FF5A5F;
+    --text:#ECEAE4; --muted:#8C93A6;
+    --mono: 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; padding-bottom:24px;}
+  .topbar{padding:18px 20px 14px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; justify-content:space-between;}
+  .topbar .title{font-size:15px; font-weight:600;}
+  .topbar .sub{font-size:11px; color:var(--muted);}
+  .tabs{display:flex; border-bottom:1px solid var(--line);}
+  .tab{flex:1; text-align:center; padding:12px 4px; font-size:12.5px; color:var(--muted); border-bottom:2px solid transparent; font-weight:600;}
+  .tab.active{color:var(--amber); border-bottom-color:var(--amber);}
+  .screen{display:none; padding:18px 20px;}
+  .screen.active{display:block;}
+
+  .field-label{font-size:12px; color:var(--muted); margin-bottom:6px;}
+  input[type=text]{width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text); padding:12px 14px; border-radius:6px; font-size:15px; font-family:var(--sans);}
+  input[type=text]:focus{outline:none; border-color:var(--amber);}
+  select{width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text); padding:12px 14px; border-radius:6px; font-size:15px; font-family:var(--sans);}
+  .btn{display:block; width:100%; text-align:center; padding:14px; border-radius:6px; font-size:14.5px; font-weight:700; border:none; margin-top:10px; cursor:pointer;}
+  .btn-amber{background:var(--amber); color:#1A1300;}
+  .btn-teal{background:var(--teal); color:#00241C;}
+  .btn-outline{background:transparent; color:var(--text); border:1px solid var(--line);}
+  .btn-ghost{background:transparent; color:var(--muted); border:1px dashed var(--line);}
+  .btn:disabled{opacity:0.4;}
+
+  .station-plate{display:flex; align-items:center; justify-content:space-between; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:12px 14px; margin-top:8px;}
+  .station-plate .idx{font-family:var(--mono); color:var(--muted); font-size:12px; width:26px;}
+  .station-plate .nm{font-family:var(--mono); font-size:14.5px; letter-spacing:0.4px; flex:1;}
+  .station-plate .rm{color:var(--red); font-size:12px; font-weight:700;}
+  .empty{color:var(--muted); font-size:13px; padding:20px 0; text-align:center;}
+  .section-title{font-size:12px; color:var(--muted); margin:22px 0 8px; letter-spacing:0.3px;}
+
+  /* line chips */
+  .line-chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;}
+  .chip{padding:8px 14px; border-radius:20px; font-size:13px; font-weight:700; color:#fff; opacity:0.45; cursor:pointer; border:2px solid transparent;}
+  .chip.active{opacity:1; border-color:#fff;}
+
+  .mode-row{display:flex; gap:8px; margin-top:14px;}
+  .mode-btn{flex:1; padding:10px; border-radius:6px; text-align:center; font-size:12.5px; font-weight:700; border:1px solid var(--line); background:var(--panel); color:var(--muted);}
+  .mode-btn.active.cur{border-color:var(--teal); color:var(--teal);}
+  .mode-btn.active.dst{border-color:var(--red); color:var(--red);}
+
+  .diagram{margin-top:14px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:14px 16px; max-height:340px; overflow-y:auto;}
+  .drow{display:flex; align-items:center; gap:12px; padding:7px 0; position:relative;}
+  .drail{width:2px; align-self:stretch; position:relative;}
+  .ddot{width:10px; height:10px; border-radius:50%; border:2px solid var(--text); background:var(--panel2); flex-shrink:0;}
+  .dname{font-family:var(--mono); font-size:13.5px; color:var(--text);}
+  .drow.cur .ddot{background:var(--teal); border-color:var(--teal);}
+  .drow.cur .dname{color:var(--teal); font-weight:700;}
+  .drow.dst .ddot{background:var(--red); border-color:var(--red);}
+  .drow.dst .dname{color:var(--red); font-weight:700;}
+  .dtag{font-size:10.5px; margin-left:6px; opacity:0.85;}
+
+  .picksum{margin-top:12px; font-size:12.5px; color:var(--muted); display:flex; gap:16px;}
+  .picksum b{color:var(--text);}
+
+  .board{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:22px 18px; margin-top:16px; text-align:center; position:relative; overflow:hidden;}
+  .board .lbl{font-size:11.5px; color:var(--muted); letter-spacing:0.5px;}
+  .board .dest{font-family:var(--mono); font-size:26px; font-weight:700; margin:10px 0 4px; letter-spacing:1px; color:var(--amber);}
+  .board .count{font-family:var(--mono); font-size:52px; font-weight:700; margin:6px 0; color:var(--text); transition:color .2s;}
+  .board .count.imminent{color:var(--red);}
+  .board .unit{font-size:12px; color:var(--muted);}
+  .board.flash{animation:flashbg .5s infinite;}
+  @keyframes flashbg{0%,100%{background:var(--panel2);} 50%{background:#3A0E10;}}
+
+  .status-row{display:flex; align-items:center; gap:8px; margin-top:14px; font-size:12px; color:var(--muted);}
+  .dot{width:8px; height:8px; border-radius:50%; background:var(--muted);}
+  .dot.on{background:var(--teal);} .dot.off{background:var(--red);}
+
+  .manual-btn{margin-top:20px; padding:22px; border-radius:8px; text-align:center; background:var(--panel); border:1px solid var(--line); font-weight:700; font-size:15px; cursor:pointer;}
+  .manual-btn:active{background:var(--line);}
+  .manual-sub{font-size:11.5px; color:var(--muted); font-weight:400; margin-top:4px;}
+
+  .route-list-mini{margin-top:14px;}
+  .stop-item{display:flex; align-items:center; gap:10px; padding:8px 0; font-family:var(--mono); font-size:13px; border-bottom:1px solid var(--line); color:var(--muted);}
+  .stop-item.passed{opacity:0.35; text-decoration:line-through;}
+  .stop-item.current{color:var(--amber); font-weight:700;}
+  .stop-item.target{color:var(--red); font-weight:700;}
+
+  .stopbtn{margin-top:14px; width:100%; padding:12px; border-radius:6px; background:transparent; border:1px solid var(--red); color:var(--red); font-weight:700; font-size:13.5px;}
+  .hint{font-size:11.5px; color:var(--muted); margin-top:10px; line-height:1.5;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="title">하차 알림</div>
+  <div class="sub" id="gpsMini">GPS 대기</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="pick">노선에서 선택</div>
+  <div class="tab" data-tab="record">커스텀 기록</div>
+  <div class="tab" data-tab="alert">알림창</div>
+</div>
+
+<!-- PICK FROM LINE MAP -->
+<div class="screen active" id="screen-pick">
+  <div class="field-label">호선 선택</div>
+  <div class="line-chips" id="lineChips"></div>
+
+  <div id="pickArea" style="display:none;">
+    <div class="status-row" style="margin-top:12px;">
+      <div class="dot on" id="gpsAutoDot"></div>
+      <span id="gpsAutoStatus" style="flex:1;">GPS로 현재역을 찾는 중...</span>
+    </div>
+    <button class="btn btn-outline" id="gpsRetryBtn">GPS로 현재역 다시 찾기</button>
+
+    <div class="mode-row">
+      <div class="mode-btn dst active" id="modeDstBtn">목적지 지정</div>
+      <div class="mode-btn cur" id="modeCurBtn">현재역 직접 지정</div>
+    </div>
+    <div class="diagram" id="diagram"></div>
+    <div class="picksum">
+      <span>현재역: <b id="sumCur">-</b></span>
+      <span>목적지: <b id="sumDst">-</b></span>
+    </div>
+    <button class="btn btn-amber" id="pickStartBtn" disabled>이 경로로 알림 시작</button>
+    <div class="hint">GPS로 현재역이 자동으로 잡혀요. 목적지만 노선도에서 탭하면 돼요. GPS가 안 되면(지하 구간 등) "현재역 직접 지정"을 눌러 수동으로 선택하세요.</div>
+  </div>
+  <div class="hint" id="pickEmptyHint">1~9호선 중 하나를 먼저 선택하세요. 지선·경의중앙선·수인분당선 등은 "커스텀 기록" 탭에서 직접 추가할 수 있어요.</div>
+</div>
+
+<!-- CUSTOM RECORD -->
+<div class="screen" id="screen-record">
+  <div class="field-label">노선 이름</div>
+  <input type="text" id="routeName" placeholder="예: 신분당선 출근길">
+
+  <div class="section-title">역 목록 (순서대로)</div>
+  <div id="stationList"></div>
+  <div class="empty" id="stationEmpty">아직 추가된 역이 없어요</div>
+
+  <button class="btn btn-outline" id="addStationBtn">+ 현재 위치를 역으로 추가</button>
+  <button class="btn btn-ghost" id="addStationManualBtn">+ 이름만 입력해서 추가 (GPS 없이)</button>
+  <button class="btn btn-amber" id="saveRouteBtn">노선 저장</button>
+
+  <div class="section-title">저장된 노선</div>
+  <div id="savedRoutes"></div>
+  <div class="empty" id="savedEmpty">저장된 노선이 없어요</div>
+
+  <div class="hint">1~9호선에 없는 노선(신분당선, 경의중앙선, 수인분당선 등)은 여기서 직접 기록하세요. 탈 때마다 역을 지날 때 "현재 위치를 역으로 추가"를 눌러두면 다음부터 재사용할 수 있어요.</div>
+</div>
+
+<!-- ALERT / RUNNING -->
+<div class="screen" id="screen-alert">
+  <div id="idleArea">
+    <div class="field-label">저장된 커스텀 노선으로 시작</div>
+    <select id="routeSelect"><option value="">저장된 노선이 없어요</option></select>
+    <div class="field-label" style="margin-top:14px;">하차역(목적지) 선택</div>
+    <select id="destSelect"><option value="">먼저 노선을 선택하세요</option></select>
+    <button class="btn btn-teal" id="startBtn" disabled>알림 시작</button>
+    <div class="hint">1~9호선은 "노선에서 선택" 탭에서 바로 시작할 수 있어요.</div>
+  </div>
+
+  <div id="runningPanel" style="display:none;">
+    <div class="board" id="board">
+      <div class="lbl">하차 준비 알림 역</div>
+      <div class="dest" id="alertStationName">-</div>
+      <div class="count" id="stopsLeft">-</div>
+      <div class="unit">정거장 남음</div>
+    </div>
+    <div class="status-row">
+      <div class="dot off" id="gpsDot"></div>
+      <span id="gpsStatus">GPS 신호 없음 · 수동으로 역을 통과시키세요</span>
+    </div>
+    <div class="manual-btn" id="passBtn">
+      역 통과<br><span class="manual-sub" id="nextStationLabel">다음 역: -</span>
+    </div>
+    <div class="route-list-mini" id="runList"></div>
+    <button class="stopbtn" id="stopBtn">알림 중지</button>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+/* ---------- Official Seoul subway line data (main trunks) ---------- */
+const LINES = {
+  '1': {name:'1호선', color:'#0052A4', stations:[
+    {name:'소요산', lat:37.9488, lng:127.0611},
+    {name:'동두천', lat:37.9275, lng:127.0548},
+    {name:'보산', lat:37.9143, lng:127.0571},
+    {name:'동두천중앙', lat:37.9018, lng:127.0565},
+    {name:'지행', lat:37.8924, lng:127.0558},
+    {name:'덕정', lat:37.8432, lng:127.0615},
+    {name:'덕계', lat:37.8187, lng:127.0568},
+    {name:'양주', lat:37.7743, lng:127.0448},
+    {name:'녹양', lat:37.7594, lng:127.0423},
+    {name:'가능', lat:37.7484, lng:127.0443},
+    {name:'의정부', lat:37.7388, lng:127.0459},
+    {name:'회룡', lat:37.7241, lng:127.0474},
+    {name:'망월사', lat:37.7105, lng:127.0474},
+    {name:'도봉산', lat:37.6893, lng:127.0462},
+    {name:'도봉', lat:37.6792, lng:127.0456},
+    {name:'방학', lat:37.6678, lng:127.044},
+    {name:'창동', lat:37.6532, lng:127.0473},
+    {name:'녹천', lat:37.6446, lng:127.0514},
+    {name:'월계', lat:37.6331, lng:127.0589},
+    {name:'광운대', lat:37.6235, lng:127.0616},
+    {name:'석계', lat:37.615, lng:127.0657},
+    {name:'신이문', lat:37.6016, lng:127.0674},
+    {name:'외대앞', lat:37.5961, lng:127.0635},
+    {name:'회기', lat:37.5895, lng:127.0576},
+    {name:'청량리', lat:37.5802, lng:127.0468},
+    {name:'제기동', lat:37.5781, lng:127.0349},
+    {name:'신설동', lat:37.5753, lng:127.0251},
+    {name:'동묘앞', lat:37.5726, lng:127.0153},
+    {name:'동대문', lat:37.5714, lng:127.0094},
+    {name:'종로5가', lat:37.5717, lng:126.9915},
+    {name:'종로3가', lat:37.5716, lng:126.9898},
+    {name:'종각', lat:37.5693, lng:126.9817},
+    {name:'시청', lat:37.5647, lng:126.9771},
+    {name:'서울역', lat:37.5547, lng:126.9726},
+    {name:'남영', lat:37.5417, lng:126.9716},
+    {name:'용산', lat:37.5298, lng:126.9658},
+    {name:'노량진', lat:37.5142, lng:126.9425},
+    {name:'대방', lat:37.5133, lng:126.9264},
+    {name:'신길', lat:37.5171, lng:126.9172},
+    {name:'영등포', lat:37.5153, lng:126.9075},
+    {name:'신도림', lat:37.5083, lng:126.8911},
+    {name:'구로', lat:37.503, lng:126.881},
+  ]},
+  '2': {name:'2호선', color:'#00A84D', stations:[
+    {name:'시청', lat:37.5647, lng:126.9771},
+    {name:'을지로입구', lat:37.566, lng:126.9829},
+    {name:'을지로3가', lat:37.5663, lng:126.9911},
+    {name:'을지로4가', lat:37.5666, lng:126.9977},
+    {name:'동대문역사문화공원', lat:37.5657, lng:127.009},
+    {name:'신당', lat:37.5659, lng:127.0176},
+    {name:'상왕십리', lat:37.5644, lng:127.0291},
+    {name:'왕십리', lat:37.5613, lng:127.0377},
+    {name:'한양대', lat:37.5552, lng:127.0435},
+    {name:'뚝섬', lat:37.5472, lng:127.0476},
+    {name:'성수', lat:37.5441, lng:127.0558},
+    {name:'건대입구', lat:37.5407, lng:127.0702},
+    {name:'구의', lat:37.5371, lng:127.0859},
+    {name:'강변', lat:37.5351, lng:127.0947},
+    {name:'잠실나루', lat:37.5207, lng:127.1038},
+    {name:'잠실', lat:37.5133, lng:127.1002},
+    {name:'잠실새내', lat:37.5117, lng:127.0862},
+    {name:'종합운동장', lat:37.511, lng:127.0736},
+    {name:'삼성', lat:37.5088, lng:127.0632},
+    {name:'선릉', lat:37.5045, lng:127.0497},
+    {name:'역삼', lat:37.5006, lng:127.0364},
+    {name:'강남', lat:37.497, lng:127.0276},
+    {name:'교대', lat:37.4939, lng:127.0144},
+    {name:'서초', lat:37.4919, lng:127.0074},
+    {name:'방배', lat:37.4815, lng:126.9977},
+    {name:'사당', lat:37.4766, lng:126.9816},
+    {name:'낙성대', lat:37.4771, lng:126.9635},
+    {name:'서울대입구', lat:37.4811, lng:126.9529},
+    {name:'봉천', lat:37.4825, lng:126.9416},
+    {name:'신림', lat:37.4842, lng:126.9297},
+    {name:'신대방', lat:37.4876, lng:126.9133},
+    {name:'구로디지털단지', lat:37.4852, lng:126.9012},
+    {name:'대림', lat:37.4926, lng:126.8959},
+    {name:'신도림', lat:37.5083, lng:126.8911},
+    {name:'문래', lat:37.5179, lng:126.8948},
+    {name:'영등포구청', lat:37.525, lng:126.896},
+    {name:'당산', lat:37.5345, lng:126.9025},
+    {name:'합정', lat:37.5495, lng:126.9139},
+    {name:'홍대입구', lat:37.5572, lng:126.9254},
+    {name:'신촌', lat:37.5551, lng:126.9368},
+    {name:'이대', lat:37.5569, lng:126.9461},
+    {name:'아현', lat:37.5574, lng:126.9562},
+    {name:'충정로', lat:37.5599, lng:126.9637},
+  ]},
+  '3': {name:'3호선', color:'#EF7C1C', stations:[
+    {name:'대화', lat:37.6761, lng:126.7474},
+    {name:'주엽', lat:37.6701, lng:126.7612},
+    {name:'정발산', lat:37.6596, lng:126.7733},
+    {name:'마두', lat:37.6521, lng:126.7777},
+    {name:'백석', lat:37.643, lng:126.7881},
+    {name:'대곡', lat:37.6317, lng:126.8111},
+    {name:'화정', lat:37.6346, lng:126.8327},
+    {name:'원당', lat:37.6532, lng:126.843},
+    {name:'원흥', lat:37.6507, lng:126.8731},
+    {name:'삼송', lat:37.6532, lng:126.8955},
+    {name:'지축', lat:37.6481, lng:126.9138},
+    {name:'구파발', lat:37.6368, lng:126.9188},
+    {name:'연신내', lat:37.619, lng:126.9213},
+    {name:'불광', lat:37.6105, lng:126.929},
+    {name:'녹번', lat:37.6009, lng:126.9358},
+    {name:'홍제', lat:37.589, lng:126.9434},
+    {name:'무악재', lat:37.5825, lng:126.9503},
+    {name:'독립문', lat:37.5744, lng:126.9579},
+    {name:'경복궁', lat:37.5758, lng:126.9743},
+    {name:'안국', lat:37.5765, lng:126.9855},
+    {name:'종로3가', lat:37.5716, lng:126.9898},
+    {name:'을지로3가', lat:37.5663, lng:126.9911},
+    {name:'충무로', lat:37.561, lng:126.9947},
+    {name:'동대입구', lat:37.559, lng:127.0052},
+    {name:'금호', lat:37.548, lng:127.0158},
+    {name:'옥수', lat:37.5415, lng:127.0174},
+    {name:'압구정', lat:37.5273, lng:127.0286},
+    {name:'신사', lat:37.5164, lng:127.0207},
+    {name:'잠원', lat:37.5124, lng:127.0112},
+    {name:'고속터미널', lat:37.5048, lng:127.0049},
+    {name:'교대', lat:37.4939, lng:127.0144},
+    {name:'남부터미널', lat:37.485, lng:127.0162},
+    {name:'양재', lat:37.4841, lng:127.0347},
+    {name:'매봉', lat:37.4871, lng:127.0469},
+    {name:'도곡', lat:37.4909, lng:127.0554},
+    {name:'대치', lat:37.4946, lng:127.0636},
+    {name:'학여울', lat:37.4963, lng:127.07},
+    {name:'대청', lat:37.4935, lng:127.0795},
+    {name:'일원', lat:37.483, lng:127.084},
+    {name:'수서', lat:37.4875, lng:127.101},
+    {name:'가락시장', lat:37.4925, lng:127.1183},
+    {name:'경찰병원', lat:37.4957, lng:127.1242},
+    {name:'오금', lat:37.5027, lng:127.1288},
+  ]},
+  '4': {name:'4호선', color:'#00A5DE', stations:[
+    {name:'당고개', lat:37.6703, lng:127.0791},
+    {name:'상계', lat:37.6607, lng:127.0734},
+    {name:'노원', lat:37.6543, lng:127.0606},
+    {name:'창동', lat:37.6532, lng:127.0473},
+    {name:'쌍문', lat:37.648, lng:127.0343},
+    {name:'수유', lat:37.6371, lng:127.0256},
+    {name:'미아', lat:37.6272, lng:127.0265},
+    {name:'미아사거리', lat:37.6127, lng:127.0302},
+    {name:'길음', lat:37.6029, lng:127.0253},
+    {name:'성신여대입구', lat:37.5927, lng:127.0166},
+    {name:'한성대입구', lat:37.5882, lng:127.0065},
+    {name:'혜화', lat:37.5822, lng:127.0019},
+    {name:'동대문', lat:37.5714, lng:127.0094},
+    {name:'동대문역사문화공원', lat:37.5657, lng:127.009},
+    {name:'충무로', lat:37.561, lng:126.9947},
+    {name:'명동', lat:37.561, lng:126.9863},
+    {name:'회현', lat:37.5588, lng:126.9785},
+    {name:'서울역', lat:37.5546, lng:126.9707},
+    {name:'숙대입구', lat:37.5446, lng:126.9722},
+    {name:'삼각지', lat:37.5352, lng:126.9737},
+    {name:'신용산', lat:37.5292, lng:126.9679},
+    {name:'이촌', lat:37.5221, lng:126.9743},
+    {name:'동작', lat:37.5025, lng:126.9798},
+    {name:'이수', lat:37.486, lng:126.9816},
+    {name:'사당', lat:37.4766, lng:126.9816},
+    {name:'남태령', lat:37.4638, lng:126.9887},
+    {name:'선바위', lat:37.4518, lng:127.0021},
+    {name:'경마공원', lat:37.444, lng:127.0078},
+    {name:'대공원', lat:37.4357, lng:127.0066},
+    {name:'과천', lat:37.4328, lng:126.9965},
+    {name:'정부과천청사', lat:37.4265, lng:126.9897},
+    {name:'인덕원', lat:37.4015, lng:126.9767},
+    {name:'평촌', lat:37.3943, lng:126.964},
+    {name:'범계', lat:37.3898, lng:126.9508},
+    {name:'금정', lat:37.372, lng:126.9436},
+    {name:'산본', lat:37.358, lng:126.933},
+    {name:'수리산', lat:37.3506, lng:126.9257},
+    {name:'대야미', lat:37.328, lng:126.9169},
+    {name:'반월', lat:37.3124, lng:126.9038},
+    {name:'상록수', lat:37.3029, lng:126.8666},
+    {name:'한대앞', lat:37.3095, lng:126.8539},
+    {name:'중앙', lat:37.316, lng:126.8385},
+    {name:'고잔', lat:37.3168, lng:126.8231},
+    {name:'초지', lat:37.3206, lng:126.8061},
+    {name:'안산', lat:37.3268, lng:126.7892},
+    {name:'신길온천', lat:37.3375, lng:126.7673},
+    {name:'정왕', lat:37.3518, lng:126.7429},
+    {name:'오이도', lat:37.3618, lng:126.7384},
+  ]},
+  '5': {name:'5호선', color:'#996CAC', stations:[
+    {name:'방화', lat:37.5776, lng:126.8128},
+    {name:'개화산', lat:37.5725, lng:126.8068},
+    {name:'김포공항', lat:37.5624, lng:126.8011},
+    {name:'송정', lat:37.5614, lng:126.8113},
+    {name:'마곡', lat:37.5602, lng:126.8261},
+    {name:'발산', lat:37.5586, lng:126.8383},
+    {name:'우장산', lat:37.548, lng:126.8364},
+    {name:'화곡', lat:37.541, lng:126.84},
+    {name:'까치산', lat:37.5318, lng:126.8467},
+    {name:'신정', lat:37.525, lng:126.8562},
+    {name:'목동', lat:37.5261, lng:126.8645},
+    {name:'오목교', lat:37.5243, lng:126.8744},
+    {name:'양평', lat:37.5259, lng:126.8866},
+    {name:'영등포구청', lat:37.525, lng:126.896},
+    {name:'영등포시장', lat:37.5227, lng:126.9051},
+    {name:'신길', lat:37.5171, lng:126.9172},
+    {name:'여의도', lat:37.5216, lng:126.9241},
+    {name:'여의나루', lat:37.527, lng:126.9328},
+    {name:'마포', lat:37.5397, lng:126.9456},
+    {name:'공덕', lat:37.544, lng:126.9515},
+    {name:'애오개', lat:37.5535, lng:126.9567},
+    {name:'충정로', lat:37.5599, lng:126.9637},
+    {name:'서대문', lat:37.5658, lng:126.9666},
+    {name:'광화문', lat:37.5709, lng:126.9769},
+    {name:'종로3가', lat:37.5716, lng:126.9898},
+    {name:'을지로4가', lat:37.5666, lng:126.9977},
+    {name:'동대문역사문화공원', lat:37.5657, lng:127.009},
+    {name:'청구', lat:37.5602, lng:127.0138},
+    {name:'신금호', lat:37.5544, lng:127.0206},
+    {name:'행당', lat:37.557, lng:127.0292},
+    {name:'왕십리', lat:37.5613, lng:127.0377},
+    {name:'마장', lat:37.566, lng:127.0436},
+    {name:'답십리', lat:37.567, lng:127.0524},
+    {name:'장한평', lat:37.5614, lng:127.0646},
+    {name:'군자', lat:37.5571, lng:127.0795},
+    {name:'아차산', lat:37.552, lng:127.0897},
+    {name:'광나루', lat:37.5453, lng:127.1036},
+    {name:'천호', lat:37.5384, lng:127.1237},
+    {name:'강동', lat:37.5351, lng:127.1328},
+    {name:'길동', lat:37.5378, lng:127.14},
+    {name:'굽은다리', lat:37.5455, lng:127.1426},
+    {name:'명일', lat:37.5513, lng:127.144},
+    {name:'고덕', lat:37.555, lng:127.1542},
+    {name:'상일동', lat:37.556, lng:127.1655},
+    {name:'강일', lat:37.5574, lng:127.1756},
+    {name:'미사', lat:37.5631, lng:127.1929},
+    {name:'하남풍산', lat:37.5521, lng:127.2039},
+    {name:'하남시청', lat:37.542, lng:127.2063},
+    {name:'하남검단산', lat:37.5398, lng:127.2231},
+  ]},
+  '6': {name:'6호선', color:'#CD7C2F', stations:[
+    {name:'응암', lat:37.5986, lng:126.9156},
+    {name:'역촌', lat:37.6064, lng:126.9226},
+    {name:'불광', lat:37.6105, lng:126.929},
+    {name:'독바위', lat:37.6185, lng:126.9331},
+    {name:'연신내', lat:37.619, lng:126.9213},
+    {name:'구산', lat:37.6114, lng:126.9176},
+    {name:'새절', lat:37.5918, lng:126.9136},
+    {name:'증산', lat:37.5832, lng:126.9095},
+    {name:'디지털미디어시티', lat:37.5776, lng:126.9002},
+    {name:'월드컵경기장', lat:37.5696, lng:126.8992},
+    {name:'마포구청', lat:37.5634, lng:126.9035},
+    {name:'망원', lat:37.5561, lng:126.9101},
+    {name:'합정', lat:37.5495, lng:126.9139},
+    {name:'상수', lat:37.5477, lng:126.9223},
+    {name:'광흥창', lat:37.5472, lng:126.932},
+    {name:'대흥', lat:37.5475, lng:126.9421},
+    {name:'공덕', lat:37.544, lng:126.9515},
+    {name:'효창공원앞', lat:37.5387, lng:126.9615},
+    {name:'삼각지', lat:37.5352, lng:126.9737},
+    {name:'녹사평', lat:37.534, lng:126.9862},
+    {name:'이태원', lat:37.5345, lng:126.9941},
+    {name:'한강진', lat:37.5393, lng:127.0017},
+    {name:'버티고개', lat:37.5481, lng:127.0072},
+    {name:'약수', lat:37.5543, lng:127.011},
+    {name:'청구', lat:37.5602, lng:127.0138},
+    {name:'신당', lat:37.5659, lng:127.0176},
+    {name:'동묘앞', lat:37.5726, lng:127.0153},
+    {name:'창신', lat:37.5794, lng:127.0152},
+    {name:'보문', lat:37.585, lng:127.0192},
+    {name:'안암', lat:37.5863, lng:127.0292},
+    {name:'고려대', lat:37.5902, lng:127.0365},
+    {name:'월곡', lat:37.601, lng:127.0412},
+    {name:'상월곡', lat:37.6065, lng:127.0489},
+    {name:'돌곶이', lat:37.6108, lng:127.0573},
+    {name:'석계', lat:37.6147, lng:127.0646},
+    {name:'태릉입구', lat:37.6173, lng:127.0749},
+    {name:'화랑대', lat:37.6202, lng:127.0838},
+    {name:'봉화산', lat:37.6174, lng:127.0913},
+  ]},
+  '7': {name:'7호선', color:'#747F00', stations:[
+    {name:'장암', lat:37.7001, lng:127.0532},
+    {name:'도봉산', lat:37.6893, lng:127.0462},
+    {name:'수락산', lat:37.6778, lng:127.0554},
+    {name:'마들', lat:37.6653, lng:127.0576},
+    {name:'노원', lat:37.6543, lng:127.0606},
+    {name:'중계', lat:37.6451, lng:127.0641},
+    {name:'하계', lat:37.6359, lng:127.0682},
+    {name:'공릉', lat:37.6258, lng:127.0729},
+    {name:'태릉입구', lat:37.6173, lng:127.0749},
+    {name:'먹골', lat:37.6105, lng:127.0778},
+    {name:'중화', lat:37.6026, lng:127.0793},
+    {name:'상봉', lat:37.5961, lng:127.0862},
+    {name:'면목', lat:37.5885, lng:127.0877},
+    {name:'사가정', lat:37.581, lng:127.0885},
+    {name:'용마산', lat:37.5738, lng:127.0868},
+    {name:'중곡', lat:37.5656, lng:127.0842},
+    {name:'군자', lat:37.5571, lng:127.0795},
+    {name:'어린이대공원', lat:37.548, lng:127.0746},
+    {name:'건대입구', lat:37.5407, lng:127.0702},
+    {name:'자양', lat:37.5316, lng:127.0667},
+    {name:'뚝섬유원지', lat:37.531, lng:127.0685},
+    {name:'청담', lat:37.5193, lng:127.0533},
+    {name:'강남구청', lat:37.5171, lng:127.0413},
+    {name:'학동', lat:37.5142, lng:127.0317},
+    {name:'논현', lat:37.5111, lng:127.021},
+    {name:'반포', lat:37.5082, lng:127.0118},
+    {name:'고속터미널', lat:37.5048, lng:127.0049},
+    {name:'내방', lat:37.4875, lng:126.9936},
+    {name:'총신대입구', lat:37.486, lng:126.9816},
+    {name:'남성', lat:37.4846, lng:126.9713},
+    {name:'숭실대입구', lat:37.496, lng:126.9532},
+    {name:'상도', lat:37.5025, lng:126.9483},
+    {name:'장승배기', lat:37.5049, lng:126.939},
+    {name:'신대방삼거리', lat:37.4995, lng:126.9271},
+    {name:'보라매', lat:37.4997, lng:126.9208},
+    {name:'신풍', lat:37.5001, lng:126.9096},
+    {name:'대림', lat:37.4926, lng:126.8959},
+    {name:'남구로', lat:37.4861, lng:126.8873},
+    {name:'가산디지털단지', lat:37.4816, lng:126.8826},
+    {name:'철산', lat:37.476, lng:126.8677},
+    {name:'광명사거리', lat:37.4792, lng:126.8549},
+    {name:'천왕', lat:37.4879, lng:126.8323},
+    {name:'온수', lat:37.4924, lng:126.8237},
+    {name:'까치울', lat:37.5062, lng:126.8114},
+    {name:'부천종합운동장', lat:37.5055, lng:126.7975},
+    {name:'춘의', lat:37.5037, lng:126.7871},
+    {name:'신중동', lat:37.5031, lng:126.776},
+    {name:'부천시청', lat:37.5047, lng:126.7636},
+    {name:'상동', lat:37.5058, lng:126.7532},
+    {name:'삼산체육관', lat:37.5065, lng:126.742},
+    {name:'굴포천', lat:37.507, lng:126.7314},
+    {name:'부평구청', lat:37.5074, lng:126.7213},
+  ]},
+  '8': {name:'8호선', color:'#E6186C', stations:[
+    {name:'암사', lat:37.5502, lng:127.1276},
+    {name:'천호', lat:37.5384, lng:127.1237},
+    {name:'강동구청', lat:37.5305, lng:127.1205},
+    {name:'몽촌토성', lat:37.5171, lng:127.113},
+    {name:'잠실', lat:37.5133, lng:127.1002},
+    {name:'석촌', lat:37.5054, lng:127.1071},
+    {name:'송파', lat:37.4997, lng:127.1122},
+    {name:'가락시장', lat:37.4925, lng:127.1183},
+    {name:'문정', lat:37.4859, lng:127.1225},
+    {name:'장지', lat:37.4787, lng:127.1262},
+    {name:'복정', lat:37.4711, lng:127.1265},
+    {name:'산성', lat:37.4569, lng:127.1501},
+    {name:'남한산성입구', lat:37.4516, lng:127.1597},
+    {name:'단대오거리', lat:37.4451, lng:127.1569},
+    {name:'신흥', lat:37.4409, lng:127.1475},
+    {name:'수진', lat:37.4376, lng:127.141},
+    {name:'모란', lat:37.4327, lng:127.1295},
+  ]},
+  '9': {name:'9호선', color:'#BDB092', stations:[
+    {name:'개화', lat:37.5783, lng:126.797},
+    {name:'김포공항', lat:37.5624, lng:126.8011},
+    {name:'공항시장', lat:37.5635, lng:126.8111},
+    {name:'신방화', lat:37.5675, lng:126.8174},
+    {name:'마곡나루', lat:37.5667, lng:126.8273},
+    {name:'양천향교', lat:37.5681, lng:126.8418},
+    {name:'가양', lat:37.5614, lng:126.8543},
+    {name:'증미', lat:37.5581, lng:126.8607},
+    {name:'등촌', lat:37.5512, lng:126.8645},
+    {name:'염창', lat:37.5468, lng:126.874},
+    {name:'신목동', lat:37.5443, lng:126.8831},
+    {name:'선유도', lat:37.538, lng:126.8937},
+    {name:'당산', lat:37.5345, lng:126.9025},
+    {name:'국회의사당', lat:37.5283, lng:126.9173},
+    {name:'여의도', lat:37.5216, lng:126.9241},
+    {name:'샛강', lat:37.5177, lng:126.9291},
+    {name:'노량진', lat:37.5142, lng:126.9425},
+    {name:'노들', lat:37.5129, lng:126.9527},
+    {name:'흑석', lat:37.5088, lng:126.9635},
+    {name:'동작', lat:37.5025, lng:126.9798},
+    {name:'구반포', lat:37.5014, lng:126.9873},
+    {name:'신반포', lat:37.5045, lng:126.9972},
+    {name:'고속터미널', lat:37.5048, lng:127.0049},
+    {name:'사평', lat:37.5044, lng:127.0151},
+    {name:'신논현', lat:37.5045, lng:127.0254},
+    {name:'언주', lat:37.5071, lng:127.0336},
+    {name:'선정릉', lat:37.5102, lng:127.0436},
+    {name:'삼성중앙', lat:37.5129, lng:127.0527},
+    {name:'봉은사', lat:37.5142, lng:127.0603},
+    {name:'종합운동장', lat:37.511, lng:127.0736},
+    {name:'삼전', lat:37.5045, lng:127.0874},
+    {name:'석촌고분', lat:37.4925, lng:127.1112},
+    {name:'석촌', lat:37.5054, lng:127.1071},
+    {name:'송파나루', lat:37.5103, lng:127.1122},
+    {name:'한성백제', lat:37.5164, lng:127.1163},
+    {name:'올림픽공원', lat:37.5159, lng:127.1309},
+    {name:'둔촌오륜', lat:37.5193, lng:127.1386},
+    {name:'중앙보훈병원', lat:37.5282, lng:127.1466},
+  ]},
+};
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    $('screen-'+t.dataset.tab).classList.add('active');
+    if(t.dataset.tab==='alert') refreshRouteSelect();
+  });
+});
+
+/* ---------- Line chips + diagram picker ---------- */
+let pickLine = null, pickMode = 'dest', pickedCur = null, pickedDst = null, gpsLocating = false;
+
+function haversinePick(a,b){
+  const R=6371000;
+  const dLat=(b.lat-a.lat)*Math.PI/180;
+  const dLng=(b.lng-a.lng)*Math.PI/180;
+  const la1=a.lat*Math.PI/180, la2=b.lat*Math.PI/180;
+  const h=Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(h), Math.sqrt(1-h));
+}
+
+function autoDetectCurrent(){
+  if(!navigator.geolocation || !pickLine) return;
+  gpsLocating = true;
+  $('gpsAutoStatus').textContent = 'GPS로 현재역 찾는 중...';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    gpsLocating = false;
+    const cur = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+    const L = LINES[pickLine];
+    let best = null, bestD = Infinity;
+    L.stations.forEach(s=>{
+      const d = haversinePick(cur, s);
+      if(d < bestD){ bestD = d; best = s; }
+    });
+    if(best && bestD < 1000){
+      pickedCur = best.name;
+      $('gpsAutoStatus').textContent = `GPS로 "${best.name}"을(를) 현재역으로 자동 설정했어요 (약 ${Math.round(bestD)}m)`;
+      pickMode = 'dest';
+      updateModeBtns(); renderDiagram(); updatePickSummary();
+    } else {
+      $('gpsAutoStatus').textContent = '이 노선 근처에서 GPS 위치를 찾지 못했어요. 노선도에서 직접 탭하세요.';
+    }
+  }, err=>{
+    gpsLocating = false;
+    $('gpsAutoStatus').textContent = 'GPS 권한이 없거나 신호가 없어요. 노선도에서 현재역을 직접 탭하세요.';
+  }, {enableHighAccuracy:true, timeout:8000});
+}
+
+function renderChips(){
+  const wrap = $('lineChips');
+  wrap.innerHTML = '';
+  Object.keys(LINES).forEach(code=>{
+    const L = LINES[code];
+    const c = document.createElement('div');
+    c.className = 'chip' + (pickLine===code ? ' active':'');
+    c.style.background = L.color;
+    c.textContent = L.name;
+    c.addEventListener('click', ()=>{
+      pickLine = code; pickedCur=null; pickedDst=null; pickMode='dest';
+      $('pickArea').style.display='block';
+      $('pickEmptyHint').style.display='none';
+      renderChips(); renderDiagram(); updateModeBtns(); updatePickSummary();
+      autoDetectCurrent();
+    });
+    wrap.appendChild(c);
+  });
+}
+
+function updateModeBtns(){
+  $('modeCurBtn').classList.toggle('active', pickMode==='current');
+  $('modeDstBtn').classList.toggle('active', pickMode==='dest');
+}
+$('modeCurBtn').addEventListener('click', ()=>{ pickMode='current'; updateModeBtns(); });
+$('modeDstBtn').addEventListener('click', ()=>{ pickMode='dest'; updateModeBtns(); });
+$('gpsRetryBtn').addEventListener('click', autoDetectCurrent);
+
+function renderDiagram(){
+  const box = $('diagram');
+  box.innerHTML = '';
+  if(!pickLine) return;
+  const L = LINES[pickLine];
+  L.stations.forEach(s=>{
+    const name = s.name;
+    const row = document.createElement('div');
+    let cls = 'drow';
+    if(name===pickedCur) cls += ' cur';
+    if(name===pickedDst) cls += ' dst';
+    row.className = cls;
+    const dot = document.createElement('div');
+    dot.className = 'ddot';
+    dot.style.borderColor = L.color;
+    if(name!==pickedCur && name!==pickedDst) dot.style.background = 'transparent';
+    const nm = document.createElement('div');
+    nm.className = 'dname';
+    nm.textContent = name;
+    if(name===pickedCur) nm.innerHTML += ' <span class="dtag">● 현재(GPS/직접)</span>';
+    if(name===pickedDst) nm.innerHTML += ' <span class="dtag">● 하차</span>';
+    row.appendChild(dot); row.appendChild(nm);
+    row.addEventListener('click', ()=>{
+      if(pickMode==='current'){
+        pickedCur = name;
+        pickMode = 'dest';
+      } else {
+        pickedDst = name;
+      }
+      updateModeBtns(); renderDiagram(); updatePickSummary();
+    });
+    box.appendChild(row);
+  });
+}
+
+function updatePickSummary(){
+  $('sumCur').textContent = pickedCur || '-';
+  $('sumDst').textContent = pickedDst || '-';
+  $('pickStartBtn').disabled = !(pickedCur && pickedDst && pickedCur!==pickedDst);
+}
+
+function buildSegment(stations, curName, dstName){
+  const ci = stations.findIndex(s=>s.name===curName), di = stations.findIndex(s=>s.name===dstName);
+  if(ci===-1 || di===-1) return null;
+  let seg;
+  if(ci <= di) seg = stations.slice(ci, di+1);
+  else seg = stations.slice(di, ci+1).slice().reverse();
+  return seg;
+}
+
+$('pickStartBtn').addEventListener('click', ()=>{
+  const seg = buildSegment(LINES[pickLine].stations, pickedCur, pickedDst);
+  if(!seg || seg.length<2) return;
+  startRunning({ stations: seg.map(s=>({name:s.name, lat:s.lat, lng:s.lng})) });
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  document.querySelector('.tab[data-tab="alert"]').classList.add('active');
+  $('screen-alert').classList.add('active');
+});
+
+renderChips();
+
+/* ---------- Permission status helper ---------- */
+function permHint(state){
+  if(state==='denied'){
+    return '위치 권한이 차단되어 있어요. 주소창 왼쪽 ⓘ(또는 자물쇠) 아이콘 → 권한 → 위치 → "허용"으로 바꾼 뒤 새로고침하세요. (브라우저가 자동으로 설정을 열어줄 수는 없어요)';
+  }
+  if(state==='prompt'){
+    return '호선을 선택하면 위치 권한을 물어봐요. 뜨면 "허용"을 눌러주세요.';
+  }
+  if(state==='granted'){
+    return '위치 권한이 허용되어 있어요. 호선을 선택하면 바로 GPS로 현재역을 찾아요.';
+  }
+  return '';
+}
+if(navigator.permissions && navigator.permissions.query){
+  navigator.permissions.query({name:'geolocation'}).then(status=>{
+    const hintEl = $('pickEmptyHint');
+    if(hintEl) hintEl.textContent = permHint(status.state) + ' 1~9호선 중 하나를 먼저 선택하세요.';
+    status.onchange = ()=>{
+      const h = $('pickEmptyHint');
+      if(h && !pickLine) h.textContent = permHint(status.state) + ' 1~9호선 중 하나를 먼저 선택하세요.';
+      if($('gpsAutoStatus') && pickLine) $('gpsAutoStatus').textContent = permHint(status.state);
+    };
+  }).catch(()=>{});
+}
+
+/* ---------- State: custom routes ---------- */
+let draftStations = [];
+let savedRoutes = [];
+
+async function loadRoutes(){
+  try{
+    const res = await window.storage.get('subway_routes', false);
+    savedRoutes = res ? JSON.parse(res.value) : [];
+  }catch(e){ savedRoutes = []; }
+  renderSavedRoutes();
+}
+async function persistRoutes(){
+  try{ await window.storage.set('subway_routes', JSON.stringify(savedRoutes), false); }
+  catch(e){ console.error('save failed', e); }
+}
+
+function renderDraft(){
+  const list = $('stationList');
+  list.innerHTML = '';
+  $('stationEmpty').style.display = draftStations.length ? 'none' : 'block';
+  draftStations.forEach((s,i)=>{
+    const row = document.createElement('div');
+    row.className = 'station-plate';
+    row.innerHTML = `<span class="idx">${String(i+1).padStart(2,'0')}</span><span class="nm">${s.name}</span><span class="rm" data-i="${i}">삭제</span>`;
+    row.querySelector('.rm').addEventListener('click', ()=>{ draftStations.splice(i,1); renderDraft(); });
+    list.appendChild(row);
+  });
+}
+
+function getPos(){
+  return new Promise((resolve,reject)=>{
+    if(!navigator.geolocation) return reject('no geo');
+    navigator.geolocation.getCurrentPosition(
+      p=>resolve({lat:p.coords.latitude, lng:p.coords.longitude}),
+      e=>reject(e), {enableHighAccuracy:true, timeout:8000}
+    );
+  });
+}
+
+$('addStationBtn').addEventListener('click', async ()=>{
+  const name = prompt('역 이름을 입력하세요');
+  if(!name) return;
+  $('addStationBtn').textContent = '위치 확인 중...';
+  try{
+    const pos = await getPos();
+    draftStations.push({name, lat:pos.lat, lng:pos.lng});
+  }catch(e){
+    draftStations.push({name, lat:null, lng:null});
+    alert('GPS 위치를 가져오지 못해 이름만 추가했어요.');
+  }
+  $('addStationBtn').textContent = '+ 현재 위치를 역으로 추가';
+  renderDraft();
+});
+
+$('addStationManualBtn').addEventListener('click', ()=>{
+  const name = prompt('역 이름을 입력하세요');
+  if(!name) return;
+  draftStations.push({name, lat:null, lng:null});
+  renderDraft();
+});
+
+$('saveRouteBtn').addEventListener('click', async ()=>{
+  const name = $('routeName').value.trim();
+  if(!name){ alert('노선 이름을 입력하세요'); return; }
+  if(draftStations.length < 2){ alert('역을 2개 이상 추가하세요'); return; }
+  savedRoutes.push({ id: Date.now().toString(), name, stations: draftStations });
+  await persistRoutes();
+  draftStations = [];
+  $('routeName').value = '';
+  renderDraft();
+  renderSavedRoutes();
+  alert('노선이 저장되었어요.');
+});
+
+function renderSavedRoutes(){
+  const wrap = $('savedRoutes');
+  wrap.innerHTML = '';
+  $('savedEmpty').style.display = savedRoutes.length ? 'none' : 'block';
+  savedRoutes.forEach(r=>{
+    const row = document.createElement('div');
+    row.className = 'station-plate';
+    row.innerHTML = `<span class="nm">${r.name}</span><span style="font-size:11px;color:var(--muted)">${r.stations.length}개 역</span><span class="rm" data-id="${r.id}">삭제</span>`;
+    row.querySelector('.rm').addEventListener('click', async ()=>{
+      savedRoutes = savedRoutes.filter(x=>x.id!==r.id);
+      await persistRoutes();
+      renderSavedRoutes();
+    });
+    wrap.appendChild(row);
+  });
+}
+
+/* ---------- Alert tab: idle (custom routes) ---------- */
+function refreshRouteSelect(){
+  const sel = $('routeSelect');
+  sel.innerHTML = '';
+  if(!savedRoutes.length){
+    sel.innerHTML = '<option value="">저장된 노선이 없어요</option>';
+    $('destSelect').innerHTML = '<option value="">먼저 노선을 선택하세요</option>';
+    $('startBtn').disabled = true;
+    return;
+  }
+  savedRoutes.forEach(r=>{
+    const o = document.createElement('option');
+    o.value = r.id; o.textContent = r.name;
+    sel.appendChild(o);
+  });
+  updateDestOptions();
+}
+function updateDestOptions(){
+  const r = savedRoutes.find(x=>x.id===$('routeSelect').value);
+  const sel = $('destSelect');
+  sel.innerHTML = '';
+  if(!r){ sel.innerHTML = '<option value="">먼저 노선을 선택하세요</option>'; $('startBtn').disabled=true; return; }
+  r.stations.forEach((s,i)=>{
+    if(i===0) return;
+    const o = document.createElement('option');
+    o.value = i; o.textContent = s.name;
+    sel.appendChild(o);
+  });
+  $('startBtn').disabled = false;
+}
+$('routeSelect').addEventListener('change', updateDestOptions);
+
+$('startBtn').addEventListener('click', ()=>{
+  const r = savedRoutes.find(x=>x.id===$('routeSelect').value);
+  const destIndex = parseInt($('destSelect').value);
+  if(!r || isNaN(destIndex)) return;
+  startRunning({ stations: r.stations.slice(0, destIndex+1) });
+});
+
+/* ---------- Running engine (shared) ---------- */
+let running = null;
+const GPS_THRESHOLD = 150;
+
+function haversine(a,b){
+  if(a.lat==null||b.lat==null) return Infinity;
+  const R=6371000;
+  const dLat=(b.lat-a.lat)*Math.PI/180;
+  const dLng=(b.lng-a.lng)*Math.PI/180;
+  const la1=a.lat*Math.PI/180, la2=b.lat*Math.PI/180;
+  const h=Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(h), Math.sqrt(1-h));
+}
+
+function beep(){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880; o.type='sine';
+    g.gain.setValueAtTime(0.2, ctx.currentTime);
+    o.start(); o.stop(ctx.currentTime+0.9);
+  }catch(e){}
+}
+function fireAlert(stationName){
+  if(navigator.vibrate) navigator.vibrate([400,150,400,150,400]);
+  beep();
+  try{
+    const u = new SpeechSynthesisUtterance(`잠시 후 ${stationName}입니다. 다음 역에서 하차하세요.`);
+    u.lang='ko-KR'; speechSynthesis.speak(u);
+  }catch(e){}
+  $('board').classList.add('flash');
+  $('stopsLeft').classList.add('imminent');
+}
+
+function renderRunList(){
+  const r = running.route;
+  const wrap = $('runList');
+  wrap.innerHTML = '';
+  r.stations.forEach((s,i)=>{
+    const el = document.createElement('div');
+    let cls = 'stop-item';
+    if(i < running.currentIndex) cls += ' passed';
+    else if(i === running.currentIndex) cls += ' current';
+    if(i === running.destIndex-1) cls += ' target';
+    el.className = cls;
+    let tag = '';
+    if(i===running.currentIndex) tag = ' ← 현재';
+    if(i===running.destIndex-1) tag = ' ★ 알림역';
+    if(i===running.destIndex) tag = ' (하차)';
+    el.textContent = `${String(i+1).padStart(2,'0')} ${s.name}${tag}`;
+    wrap.appendChild(el);
+  });
+}
+
+function updateBoard(){
+  const r = running.route;
+  const left = running.destIndex - running.currentIndex;
+  $('alertStationName').textContent = r.stations[running.destIndex-1].name;
+  $('stopsLeft').textContent = Math.max(left-1,0);
+  $('stopsLeft').classList.toggle('imminent', left<=1);
+  const next = r.stations[running.currentIndex+1];
+  $('nextStationLabel').textContent = next ? '다음 역: '+next.name : '종점 근접';
+  renderRunList();
+}
+
+function advanceStation(){
+  if(!running) return;
+  if(running.currentIndex >= running.destIndex-1) return;
+  running.currentIndex++;
+  updateBoard();
+  if(running.currentIndex === running.destIndex-1){
+    fireAlert(running.route.stations[running.destIndex].name);
+  }
+}
+
+function hasCoords(route){
+  return route.stations.some(s=>s.lat!=null);
+}
+
+function startWatch(){
+  if(!navigator.geolocation || !hasCoords(running.route)){
+    $('gpsStatus').textContent = '좌표 정보 없음 · 수동으로 역을 통과시키세요';
+    return;
+  }
+  running.watchId = navigator.geolocation.watchPosition(pos=>{
+    $('gpsDot').className='dot on';
+    $('gpsMini').textContent='GPS 수신 중';
+    $('gpsStatus').textContent='GPS 신호 있음 · 자동 감지 중';
+    const cur = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+    const r = running.route;
+    const nextIdx = running.currentIndex+1;
+    if(nextIdx < r.stations.length){
+      const d = haversine(cur, r.stations[nextIdx]);
+      if(d < GPS_THRESHOLD && nextIdx > running.currentIndex){
+        advanceStation();
+      }
+    }
+  }, err=>{
+    $('gpsDot').className='dot off';
+    $('gpsMini').textContent='GPS 대기';
+    $('gpsStatus').textContent='GPS 신호 없음 · 수동으로 역을 통과시키세요';
+  }, {enableHighAccuracy:true, maximumAge:5000, timeout:10000});
+}
+
+function startRunning(route){
+  running = { route, destIndex: route.stations.length-1, currentIndex:0, watchId:null };
+  $('idleArea').style.display='none';
+  $('runningPanel').style.display='block';
+  $('board').classList.remove('flash');
+  $('stopsLeft').classList.remove('imminent');
+  updateBoard();
+  startWatch();
+  if(running.currentIndex === running.destIndex-1){
+    fireAlert(running.route.stations[running.destIndex].name);
+  }
+}
+
+$('passBtn').addEventListener('click', advanceStation);
+
+$('stopBtn').addEventListener('click', ()=>{
+  if(running && running.watchId!=null) navigator.geolocation.clearWatch(running.watchId);
+  running = null;
+  $('runningPanel').style.display='none';
+  $('idleArea').style.display='block';
+  $('board').classList.remove('flash');
+});
+
+/* ---------- init ---------- */
+renderDraft();
+loadRoutes();
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
