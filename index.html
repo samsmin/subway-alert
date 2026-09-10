@@ -36,9 +36,7 @@
   .chip{padding:8px 14px; border-radius:20px; font-size:13px; font-weight:700; color:#fff; opacity:0.45; cursor:pointer; border:2px solid transparent;}
   .chip.active{opacity:1; border-color:#fff;}
 
-  .mode-row{display:flex; gap:8px; margin-top:14px;}
-  .mode-btn{flex:1; padding:10px; border-radius:6px; text-align:center; font-size:12.5px; font-weight:700; border:1px solid var(--line); background:var(--panel); color:var(--muted);}
-  .mode-btn.active.dst{border-color:var(--red); color:var(--red);}
+  .dst-select-btn{padding:6px 12px; border-radius:6px; font-size:12px; font-weight:700; border:1px solid var(--red); color:var(--red); background:transparent; cursor:pointer;}
 
   .diagram{margin-top:14px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:14px 16px; max-height:340px; overflow-y:auto;}
   .drow{display:flex; align-items:center; gap:12px; padding:7px 0; position:relative;}
@@ -90,14 +88,14 @@
     <div class="lbl">다음역</div>
     <div id="nextStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
   </div>
-  <div class="board" id="destStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
-    <div class="lbl">도착역</div>
-    <div id="destStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
+  <div class="board" id="destStationBoard" style="padding:14px 16px; margin-top:10px; text-align:left; display:flex; align-items:center; justify-content:space-between;">
+    <div>
+      <div class="lbl">도착역</div>
+      <div id="destStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
+    </div>
+    <button class="dst-select-btn" id="modeDstBtn">도착역 변경</button>
   </div>
 
-  <div class="mode-row">
-    <div class="mode-btn dst active" id="modeDstBtn">목적지 선택</div>
-  </div>
   <div id="destPicker" style="display:none;">
     <div class="line-chips" id="lineChips"></div>
     <div class="diagram" id="diagram"></div>
@@ -568,10 +566,9 @@ function updateNextStationDisplay(){
 
 function updateDestStationDisplay(){
   if(!pickedDst){
-    $('destStationBoard').style.display = 'none';
+    $('destStationLine').textContent = '-';
     return;
   }
-  $('destStationBoard').style.display = 'block';
   $('destStationLine').innerHTML =
     `<span style="font-size:22px; font-weight:700; color:var(--red);">${stationLabel(pickedDst)}</span>`;
 }
@@ -699,13 +696,13 @@ function isDiagramOpen(){
 }
 function openDiagram(){
   $('destPicker').style.display = 'block';
-  $('modeDstBtn').textContent = '목적지 닫기';
+  $('modeDstBtn').textContent = '닫기';
   renderLineChips();
   renderDiagram();
 }
 function closeDiagram(){
   $('destPicker').style.display = 'none';
-  $('modeDstBtn').textContent = '목적지 선택';
+  $('modeDstBtn').textContent = '도착역 변경';
 }
 
 $('modeDstBtn').addEventListener('click', ()=>{
