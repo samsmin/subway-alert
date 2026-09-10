@@ -124,6 +124,10 @@
       <div class="lbl">다음 역</div>
       <div id="nextStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
     </div>
+    <div class="board" id="destStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
+      <div class="lbl">도착역</div>
+      <div id="destStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
+    </div>
 
     <div class="mode-row">
       <div class="mode-btn dst active" id="modeDstBtn">목적지 선택</div>
@@ -677,6 +681,16 @@ function updateNextStationDisplay(){
     `<span style="font-size:22px; font-weight:700; color:var(--amber);">${stationLabel(next.name)}</span>`;
 }
 
+function updateDestStationDisplay(){
+  if(!pickedDst){
+    $('destStationBoard').style.display = 'none';
+    return;
+  }
+  $('destStationBoard').style.display = 'block';
+  $('destStationLine').innerHTML =
+    `<span style="font-size:22px; font-weight:700; color:var(--red);">${stationLabel(pickedDst)}</span>`;
+}
+
 function startPickWatch(){
   stopPickWatch();
   if(!navigator.geolocation) return;
@@ -873,6 +887,7 @@ function updatePickSummary(){
   $('sumDst').textContent = pickedDst || '-';
   $('pickStartBtn').disabled = !(pickedCur && pickedDst && pickedCur!==pickedDst);
   updateNextStationDisplay();
+  updateDestStationDisplay();
 }
 
 function buildSegment(stations, curName, dstName){
