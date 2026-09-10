@@ -80,7 +80,7 @@
     <span id="gpsAutoStatus" style="flex:1;">GPS로 현재역을 자동으로 찾는 중...</span>
   </div>
 
-  <div class="board" id="stopsLeftBoard" style="margin-top:10px;">
+  <div class="board" id="stopsLeftBoard" style="display:none; margin-top:10px;">
     <div class="lbl">남은 정거장</div>
     <div class="count" id="stopsLeft">-</div>
     <div class="unit">정거장 남음</div>
@@ -890,6 +890,7 @@ function startWatch(){
 
 function startRunning(route){
   running = { route, destIndex: route.stations.length-1, currentIndex:0, watchId:null };
+  $('stopsLeftBoard').style.display='block';
   $('stopsLeftBoard').classList.remove('flash');
   $('stopsLeft').classList.remove('imminent');
   updateBoard();
@@ -903,6 +904,7 @@ function startRunning(route){
 function stopRunning(){
   if(running && running.watchId!=null) navigator.geolocation.clearWatch(running.watchId);
   running = null;
+  $('stopsLeftBoard').style.display='none';
   $('stopsLeftBoard').classList.remove('flash');
   $('stopsLeft').textContent = '-';
   $('stopsLeft').classList.remove('imminent');
