@@ -1,4 +1,4 @@
-const CACHE = 'hacha-alert-v1';
+const CACHE = 'hacha-alert-v2';
 const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -13,8 +13,16 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
+// Network-first: always try to fetch the latest version first.
+// Falls back to cache only when offline (e.g. underground with no signal).
 self.addEventListener('fetch', e => {
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    fetch(e.request)
+      .then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy));
+        return res;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
