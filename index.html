@@ -82,17 +82,6 @@
   .dot{width:8px; height:8px; border-radius:50%; background:var(--muted);}
   .dot.on{background:var(--teal);} .dot.off{background:var(--red);}
 
-  .manual-btn{margin-top:20px; padding:22px; border-radius:8px; text-align:center; background:var(--panel); border:1px solid var(--line); font-weight:700; font-size:15px; cursor:pointer;}
-  .manual-btn:active{background:var(--line);}
-  .manual-sub{font-size:11.5px; color:var(--muted); font-weight:400; margin-top:4px;}
-
-  .route-list-mini{margin-top:14px;}
-  .stop-item{display:flex; align-items:center; gap:10px; padding:8px 0; font-family:var(--mono); font-size:13px; border-bottom:1px solid var(--line); color:var(--muted);}
-  .stop-item.passed{opacity:0.35; text-decoration:line-through;}
-  .stop-item.current{color:var(--amber); font-weight:700;}
-  .stop-item.target{color:var(--red); font-weight:700;}
-
-  .stopbtn{margin-top:14px; width:100%; padding:12px; border-radius:6px; background:transparent; border:1px solid var(--red); color:var(--red); font-weight:700; font-size:13.5px;}
   .hint{font-size:11.5px; color:var(--muted); margin-top:10px; line-height:1.5;}
 </style>
 </head>
@@ -108,8 +97,7 @@
 
 <div id="menuDropdown" style="display:none; position:absolute; top:58px; right:20px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; overflow:hidden; z-index:50; min-width:160px; box-shadow:0 8px 24px rgba(0,0,0,0.5);">
   <div class="menu-item" data-tab="pick" style="padding:13px 16px; font-size:13.5px; font-weight:600; cursor:pointer; border-bottom:1px solid var(--line);">노선에서 선택</div>
-  <div class="menu-item" data-tab="record" style="padding:13px 16px; font-size:13.5px; font-weight:600; cursor:pointer; border-bottom:1px solid var(--line);">커스텀 기록</div>
-  <div class="menu-item" data-tab="alert" style="padding:13px 16px; font-size:13.5px; font-weight:600; cursor:pointer;">알림창</div>
+  <div class="menu-item" data-tab="record" style="padding:13px 16px; font-size:13.5px; font-weight:600; cursor:pointer;">커스텀 기록</div>
 </div>
 
 <!-- PICK FROM LINE MAP -->
@@ -119,20 +107,44 @@
       <div class="dot on" id="gpsAutoDot"></div>
       <span id="gpsAutoStatus" style="flex:1;">GPS로 현재역을 자동으로 찾는 중...</span>
     </div>
-    <div class="board" id="nextStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
-      <div class="lbl">다음역</div>
-      <div id="nextStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
-    </div>
-    <div class="board" id="destStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
-      <div class="lbl">도착역</div>
-      <div id="destStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
+
+    <div class="board" id="stopsLeftBoard" style="display:none; margin-top:10px;">
+      <div class="lbl">남은 정거장</div>
+      <div class="count" id="stopsLeft">-</div>
+      <div class="unit">정거장 남음</div>
     </div>
 
-    <div class="mode-row">
-      <div class="mode-btn dst active" id="modeDstBtn">목적지 선택</div>
+    <div id="pickSelectArea">
+      <div class="board" id="nextStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
+        <div class="lbl">다음역</div>
+        <div id="nextStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
+      </div>
+      <div class="board" id="destStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
+        <div class="lbl">도착역</div>
+        <div id="destStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
+      </div>
+
+      <div class="mode-row">
+        <div class="mode-btn dst active" id="modeDstBtn">목적지 선택</div>
+      </div>
+      <div class="diagram" id="diagram" style="display:none;"></div>
+      <button class="btn btn-ghost" id="diagramCloseBtn" style="display:none;">노선도 닫기</button>
+
+      <div id="recentQuickStart" style="display:none;">
+        <div class="section-title">최근 목적지</div>
+        <div class="board" style="text-align:left; padding:16px 18px;">
+          <div class="lbl" id="recentLineLabel">-</div>
+          <div class="dest" id="recentDestLabel" style="font-size:20px; margin:8px 0 0;">-</div>
+        </div>
+        <button class="btn btn-amber" id="recentStartBtn">GPS로 현재역 찾아서 시작</button>
+      </div>
+
+      <div class="section-title">저장된 커스텀 노선으로 시작</div>
+      <select id="routeSelect"><option value="">저장된 노선이 없어요</option></select>
+      <select id="destSelect" style="margin-top:10px;"><option value="">먼저 노선을 선택하세요</option></select>
+      <button class="btn btn-teal" id="startBtn" disabled>커스텀 노선 시작</button>
     </div>
-    <div class="diagram" id="diagram" style="display:none;"></div>
-    <button class="btn btn-ghost" id="diagramCloseBtn" style="display:none;">노선도 닫기</button>
+
     <button class="btn btn-amber" id="pickStartBtn" disabled>시작</button>
   </div>
 </div>
@@ -155,47 +167,6 @@
   <div class="empty" id="savedEmpty">저장된 노선이 없어요</div>
 
   <div class="hint">1~9호선에 없는 노선(신분당선, 경의중앙선, 수인분당선 등)은 여기서 직접 기록하세요. 탈 때마다 역을 지날 때 "현재 위치를 역으로 추가"를 눌러두면 다음부터 재사용할 수 있어요.</div>
-</div>
-
-<!-- ALERT / RUNNING -->
-<div class="screen" id="screen-alert">
-  <div id="idleArea">
-    <div id="recentQuickStart" style="display:none;">
-      <div class="field-label">최근 목적지</div>
-      <div class="board" style="text-align:left; padding:16px 18px;">
-        <div class="lbl" id="recentLineLabel">-</div>
-        <div class="dest" id="recentDestLabel" style="font-size:20px; margin:8px 0 0;">-</div>
-      </div>
-      <button class="btn btn-amber" id="recentStartBtn">GPS로 현재역 찾아서 시작</button>
-      <div class="hint">GPS가 안 잡히면 <span id="recentPickManualLink" style="color:var(--amber); text-decoration:underline; cursor:pointer;">노선도에서 직접 현재역 선택</span></div>
-      <div class="section-title">다른 노선으로 시작</div>
-    </div>
-
-    <div class="field-label">저장된 커스텀 노선으로 시작</div>
-    <select id="routeSelect"><option value="">저장된 노선이 없어요</option></select>
-    <div class="field-label" style="margin-top:14px;">하차역(목적지) 선택</div>
-    <select id="destSelect"><option value="">먼저 노선을 선택하세요</option></select>
-    <button class="btn btn-teal" id="startBtn" disabled>알림 시작</button>
-    <div class="hint">1~9호선은 메뉴의 "노선에서 선택"에서 바로 시작할 수 있어요.</div>
-  </div>
-
-  <div id="runningPanel" style="display:none;">
-    <div class="board" id="board">
-      <div class="lbl">하차 준비 알림 역</div>
-      <div class="dest" id="alertStationName">-</div>
-      <div class="count" id="stopsLeft">-</div>
-      <div class="unit">정거장 남음</div>
-    </div>
-    <div class="status-row">
-      <div class="dot off" id="gpsDot"></div>
-      <span id="gpsStatus">GPS 신호 없음 · 수동으로 역을 통과시키세요</span>
-    </div>
-    <div class="manual-btn" id="passBtn">
-      역 통과<br><span class="manual-sub" id="nextStationLabel">다음 역: -</span>
-    </div>
-    <div class="route-list-mini" id="runList"></div>
-    <button class="stopbtn" id="stopBtn">알림 중지</button>
-  </div>
 </div>
 
 <script>
@@ -605,9 +576,14 @@ Object.keys(LINES).forEach(code=>{
 function showScreen(name){
   document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
   $('screen-'+name).classList.add('active');
-  if(name==='alert'){ refreshRouteSelect(); renderRecentQuickStart(); }
-  if(name==='pick'){ startPickWatch(); updatePickStartBtn(); }
-  else stopPickWatch();
+  if(name==='pick'){
+    startPickWatch();
+    updatePickStartBtn();
+    refreshRouteSelect();
+    renderRecentQuickStart();
+  } else {
+    stopPickWatch();
+  }
 }
 
 $('menuBtn').addEventListener('click', ()=>{
@@ -803,22 +779,23 @@ $('recentStartBtn').addEventListener('click', ()=>{
   }, {enableHighAccuracy:true, timeout:8000});
 });
 
-$('recentPickManualLink').addEventListener('click', ()=>{
-  if(!recentPick) return;
-  showScreen('pick');
-  selectLine(recentPick.line, {dest: recentPick.dest});
-});
-
+function isDiagramOpen(){
+  return $('diagram').style.display === 'block';
+}
 function openDiagram(){
   $('diagram').style.display = 'block';
   $('diagramCloseBtn').style.display = 'block';
+  $('modeDstBtn').textContent = '목적지 닫기';
 }
 function closeDiagram(){
   $('diagram').style.display = 'none';
   $('diagramCloseBtn').style.display = 'none';
+  $('modeDstBtn').textContent = '목적지 선택';
 }
 
-$('modeDstBtn').addEventListener('click', openDiagram);
+$('modeDstBtn').addEventListener('click', ()=>{
+  if(isDiagramOpen()) closeDiagram(); else openDiagram();
+});
 $('diagramCloseBtn').addEventListener('click', closeDiagram);
 
 function renderDiagram(){
@@ -885,7 +862,6 @@ $('pickStartBtn').addEventListener('click', ()=>{
   saveRecentDestination(pickLine, pickedDst);
   stopPickWatch();
   startRunning({ stations: seg.map(s=>({name:s.name, lat:s.lat, lng:s.lng})) });
-  showScreen('alert');
 });
 
 /* ---------- Permission status helper ---------- */
@@ -1037,6 +1013,7 @@ $('startBtn').addEventListener('click', ()=>{
   const r = savedRoutes.find(x=>x.id===$('routeSelect').value);
   const destIndex = parseInt($('destSelect').value);
   if(!r || isNaN(destIndex)) return;
+  stopPickWatch();
   startRunning({ stations: r.stations.slice(0, destIndex+1) });
 });
 
@@ -1071,39 +1048,14 @@ function fireAlert(stationName){
     const u = new SpeechSynthesisUtterance(`잠시 후 ${stationName}입니다. 다음 역에서 하차하세요.`);
     u.lang='ko-KR'; speechSynthesis.speak(u);
   }catch(e){}
-  $('board').classList.add('flash');
+  $('stopsLeftBoard').classList.add('flash');
   $('stopsLeft').classList.add('imminent');
 }
 
-function renderRunList(){
-  const r = running.route;
-  const wrap = $('runList');
-  wrap.innerHTML = '';
-  r.stations.forEach((s,i)=>{
-    const el = document.createElement('div');
-    let cls = 'stop-item';
-    if(i < running.currentIndex) cls += ' passed';
-    else if(i === running.currentIndex) cls += ' current';
-    if(i === running.destIndex-1) cls += ' target';
-    el.className = cls;
-    let tag = '';
-    if(i===running.currentIndex) tag = ' ← 현재';
-    if(i===running.destIndex-1) tag = ' ★ 알림역';
-    if(i===running.destIndex) tag = ' (하차)';
-    el.textContent = `${String(i+1).padStart(2,'0')} ${s.name}${tag}`;
-    wrap.appendChild(el);
-  });
-}
-
 function updateBoard(){
-  const r = running.route;
   const left = running.destIndex - running.currentIndex;
-  $('alertStationName').textContent = r.stations[running.destIndex-1].name;
   $('stopsLeft').textContent = Math.max(left-1,0);
   $('stopsLeft').classList.toggle('imminent', left<=1);
-  const next = r.stations[running.currentIndex+1];
-  $('nextStationLabel').textContent = next ? '다음 역: '+next.name : '종점 근접';
-  renderRunList();
 }
 
 function advanceStation(){
@@ -1121,14 +1073,9 @@ function hasCoords(route){
 }
 
 function startWatch(){
-  if(!navigator.geolocation || !hasCoords(running.route)){
-    $('gpsStatus').textContent = '좌표 정보 없음 · 수동으로 역을 통과시키세요';
-    return;
-  }
+  if(!navigator.geolocation || !hasCoords(running.route)) return;
   running.watchId = navigator.geolocation.watchPosition(pos=>{
-    $('gpsDot').className='dot on';
     $('gpsMini').textContent='GPS 수신 중';
-    $('gpsStatus').textContent='GPS 신호 있음 · 자동 감지 중';
     const cur = {lat:pos.coords.latitude, lng:pos.coords.longitude};
     const r = running.route;
     const nextIdx = running.currentIndex+1;
@@ -1139,17 +1086,15 @@ function startWatch(){
       }
     }
   }, err=>{
-    $('gpsDot').className='dot off';
     $('gpsMini').textContent='GPS 대기';
-    $('gpsStatus').textContent='GPS 신호 없음 · 수동으로 역을 통과시키세요';
   }, {enableHighAccuracy:true, maximumAge:5000, timeout:10000});
 }
 
 function startRunning(route){
   running = { route, destIndex: route.stations.length-1, currentIndex:0, watchId:null };
-  $('idleArea').style.display='none';
-  $('runningPanel').style.display='block';
-  $('board').classList.remove('flash');
+  $('pickSelectArea').style.display='none';
+  $('stopsLeftBoard').style.display='block';
+  $('stopsLeftBoard').classList.remove('flash');
   $('stopsLeft').classList.remove('imminent');
   updateBoard();
   startWatch();
@@ -1162,15 +1107,12 @@ function startRunning(route){
 function stopRunning(){
   if(running && running.watchId!=null) navigator.geolocation.clearWatch(running.watchId);
   running = null;
-  $('runningPanel').style.display='none';
-  $('idleArea').style.display='block';
-  $('board').classList.remove('flash');
+  $('stopsLeftBoard').style.display='none';
+  $('stopsLeftBoard').classList.remove('flash');
+  $('pickSelectArea').style.display='block';
   updatePickStartBtn();
+  startPickWatch();
 }
-
-$('passBtn').addEventListener('click', advanceStation);
-
-$('stopBtn').addEventListener('click', stopRunning);
 
 /* ---------- init ---------- */
 renderDraft();
@@ -1178,11 +1120,7 @@ loadRoutes();
 (async ()=>{
   await loadRecentDestinations();
   await loadRecentPick();
-  if(recentPick && LINES[recentPick.line]){
-    showScreen('alert');
-  } else {
-    showScreen('pick');
-  }
+  showScreen('pick');
 })();
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
