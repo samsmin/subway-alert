@@ -125,13 +125,14 @@
       <div class="mode-btn dst active" id="modeDstBtn">목적지 지정</div>
       <div class="mode-btn cur" id="modeCurBtn">현재역 직접 지정</div>
     </div>
-    <div class="diagram" id="diagram"></div>
+    <div class="diagram" id="diagram" style="display:none;"></div>
+    <button class="btn btn-ghost" id="diagramCloseBtn" style="display:none;">노선도 닫기</button>
     <div class="picksum">
       <span>현재역: <b id="sumCur">-</b></span>
       <span>목적지: <b id="sumDst">-</b></span>
     </div>
     <button class="btn btn-amber" id="pickStartBtn" disabled>이 경로로 알림 시작</button>
-    <div class="hint">위치가 바뀔 때마다 GPS로 현재역이 자동으로 갱신돼요 — 버튼을 따로 누를 필요 없어요. 목적지만 노선도에서 탭하면 돼요. GPS가 안 되면(지하 구간 등) "현재역 직접 지정"을 눌러 수동으로 선택하세요.</div>
+    <div class="hint">현재역은 위치가 바뀔 때마다 GPS로 자동 갱신돼요. 최근에 고른 목적지가 있으면 자동으로 채워져요 — 바꾸고 싶을 때만 "목적지 선택" 버튼을 눌러 노선도를 열고 다시 탭하세요.</div>
   </div>
   <div class="hint" id="pickEmptyHint">1~9호선 중 하나를 먼저 선택하세요. 지선·경의중앙선·수인분당선 등은 "커스텀 기록" 탭에서 직접 추가할 수 있어요.</div>
 </div>
@@ -660,7 +661,7 @@ function renderChips(){
       if(recent && L.stations.some(s=>s.name===recent)){
         pickedDst = recent;
       }
-      renderChips(); renderDiagram(); updateModeBtns(); updatePickSummary();
+      renderChips(); renderDiagram(); updateModeBtns(); updatePickSummary(); closeDiagram();
       startPickWatch();
     });
     wrap.appendChild(c);
@@ -681,6 +682,15 @@ async function saveRecentDestination(line, destName){
   catch(e){ console.error('save recent dest failed', e); }
 }
 
+function openDiagram(){
+  $('diagram').style.display = 'block';
+  $('diagramCloseBtn').style.display = 'block';
+}
+function closeDiagram(){
+  $('diagram').style.display = 'none';
+  $('diagramCloseBtn').style.display = 'none';
+}
+
 function updateModeBtns(){
   $('modeCurBtn').classList.toggle('active', pickMode==='current');
   $('modeDstBtn').classList.toggle('active', pickMode==='dest');
@@ -691,8 +701,10 @@ $('modeCurBtn').addEventListener('click', ()=>{
   $('gpsPauseBtn').textContent = '자동 추적 재개';
   $('gpsAutoStatus').textContent = '자동 추적 일시정지됨 · 노선도에서 현재역을 직접 탭하세요';
   updateModeBtns();
+  openDiagram();
 });
-$('modeDstBtn').addEventListener('click', ()=>{ pickMode='dest'; updateModeBtns(); });
+$('modeDstBtn').addEventListener('click', ()=>{ pickMode='dest'; updateModeBtns(); openDiagram(); });
+$('diagramCloseBtn').addEventListener('click', closeDiagram);
 $('gpsPauseBtn').addEventListener('click', ()=>{
   autoTrackPaused = !autoTrackPaused;
   $('gpsPauseBtn').textContent = autoTrackPaused ? '자동 추적 재개' : '자동 추적 일시정지';
@@ -729,6 +741,7 @@ function renderDiagram(){
         pickedDst = name;
       }
       updateModeBtns(); renderDiagram(); updatePickSummary();
+      closeDiagram();
     });
     box.appendChild(row);
   });
