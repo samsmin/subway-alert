@@ -656,11 +656,29 @@ function renderChips(){
       $('pickArea').style.display='block';
       $('pickEmptyHint').style.display='none';
       $('gpsPauseBtn').textContent = '자동 추적 일시정지';
+      const recent = recentDestinations[code];
+      if(recent && L.stations.some(s=>s.name===recent)){
+        pickedDst = recent;
+      }
       renderChips(); renderDiagram(); updateModeBtns(); updatePickSummary();
       startPickWatch();
     });
     wrap.appendChild(c);
   });
+}
+
+/* ---------- Recent destination memory ---------- */
+let recentDestinations = {};
+async function loadRecentDestinations(){
+  try{
+    const res = await window.storage.get('recent_destinations', false);
+    recentDestinations = res ? JSON.parse(res.value) : {};
+  }catch(e){ recentDestinations = {}; }
+}
+async function saveRecentDestination(line, destName){
+  recentDestinations[line] = destName;
+  try{ await window.storage.set('recent_destinations', JSON.stringify(recentDestinations), false); }
+  catch(e){ console.error('save recent dest failed', e); }
 }
 
 function updateModeBtns(){
@@ -734,6 +752,7 @@ function buildSegment(stations, curName, dstName){
 $('pickStartBtn').addEventListener('click', ()=>{
   const seg = buildSegment(LINES[pickLine].stations, pickedCur, pickedDst);
   if(!seg || seg.length<2) return;
+  saveRecentDestination(pickLine, pickedDst);
   stopPickWatch();
   startRunning({ stations: seg.map(s=>({name:s.name, lat:s.lat, lng:s.lng})) });
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
@@ -743,6 +762,7 @@ $('pickStartBtn').addEventListener('click', ()=>{
 });
 
 renderChips();
+loadRecentDestinations();
 
 /* ---------- Permission status helper ---------- */
 function permHint(state){
