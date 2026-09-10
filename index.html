@@ -561,7 +561,7 @@ function updateNextStationDisplay(){
   $('nextStationLine').innerHTML =
     `<span style="font-size:15px; color:var(--muted);">${stationLabel(pickedCur)}</span>`+
     `<span style="color:var(--muted); margin:0 6px;">›</span>`+
-    `<span style="font-size:22px; font-weight:700; color:var(--amber);">${stationLabel(next.name)}</span>`;
+    `<span style="font-size:22px; font-weight:700; color:${L.color};">${stationLabel(next.name)}</span>`;
 }
 
 function updateDestStationDisplay(){
@@ -569,8 +569,9 @@ function updateDestStationDisplay(){
     $('destStationLine').textContent = '-';
     return;
   }
+  const color = pickLine ? LINES[pickLine].color : 'var(--red)';
   $('destStationLine').innerHTML =
-    `<span style="font-size:22px; font-weight:700; color:var(--red);">${stationLabel(pickedDst)}</span>`;
+    `<span style="font-size:22px; font-weight:700; color:${color};">${stationLabel(pickedDst)}</span>`;
 }
 
 function startPickWatch(){
