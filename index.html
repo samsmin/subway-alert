@@ -119,6 +119,10 @@
       <div class="dot on" id="gpsAutoDot"></div>
       <span id="gpsAutoStatus" style="flex:1;">GPS 자동 추적 중...</span>
     </div>
+    <div class="board" id="nextStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
+      <div class="lbl">다음 역</div>
+      <div id="nextStationLine" style="font-family:var(--mono); font-size:17px; font-weight:700; margin-top:6px; color:var(--text);">-</div>
+    </div>
     <button class="btn btn-outline" id="gpsPauseBtn">자동 추적 일시정지</button>
 
     <div class="mode-row">
@@ -612,6 +616,33 @@ function stopPickWatch(){
   if(pickWatchId!=null){ navigator.geolocation.clearWatch(pickWatchId); pickWatchId=null; }
 }
 
+function stationLabel(name){
+  return name.endsWith('역') ? name : name + '역';
+}
+
+function updateNextStationDisplay(){
+  if(!pickLine || !pickedCur){
+    $('nextStationBoard').style.display = 'none';
+    return;
+  }
+  const L = LINES[pickLine];
+  const ci = L.stations.findIndex(s=>s.name===pickedCur);
+  if(ci===-1){ $('nextStationBoard').style.display = 'none'; return; }
+  let dir = 1;
+  if(pickedDst){
+    const di = L.stations.findIndex(s=>s.name===pickedDst);
+    if(di!==-1 && di < ci) dir = -1;
+  }
+  const nextIdx = ci + dir;
+  const next = L.stations[nextIdx];
+  if(!next){
+    $('nextStationBoard').style.display = 'none';
+    return;
+  }
+  $('nextStationBoard').style.display = 'block';
+  $('nextStationLine').textContent = `${stationLabel(pickedCur)} -> ${stationLabel(next.name)}`;
+}
+
 function startPickWatch(){
   stopPickWatch();
   if(!navigator.geolocation || !pickLine) return;
@@ -631,6 +662,7 @@ function startPickWatch(){
       if(pickedCur !== best.name){
         pickedCur = best.name;
         renderDiagram(); updatePickSummary();
+        updateNextStationDisplay();
       }
       $('gpsAutoStatus').textContent = `현재역: "${best.name}" (약 ${Math.round(bestD)}m) · 위치가 바뀌면 자동으로 갱신돼요`;
     } else {
@@ -751,6 +783,7 @@ function updatePickSummary(){
   $('sumCur').textContent = pickedCur || '-';
   $('sumDst').textContent = pickedDst || '-';
   $('pickStartBtn').disabled = !(pickedCur && pickedDst && pickedCur!==pickedDst);
+  updateNextStationDisplay();
 }
 
 function buildSegment(stations, curName, dstName){
