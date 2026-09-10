@@ -120,7 +120,7 @@
       <span id="gpsAutoStatus" style="flex:1;">GPS로 현재역을 자동으로 찾는 중...</span>
     </div>
     <div class="board" id="nextStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
-      <div class="lbl">다음 역</div>
+      <div class="lbl">다음역</div>
       <div id="nextStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
     </div>
     <div class="board" id="destStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
@@ -133,13 +133,7 @@
     </div>
     <div class="diagram" id="diagram" style="display:none;"></div>
     <button class="btn btn-ghost" id="diagramCloseBtn" style="display:none;">노선도 닫기</button>
-    <div class="picksum">
-      <span>현재역: <b id="sumCur">-</b></span>
-    </div>
-    <button class="btn btn-amber" id="pickStartBtn" disabled>이 경로로 알림 시작</button>
-    <button class="btn btn-outline" id="gpsPauseBtn" style="margin-top:14px;">자동 추적 일시정지</button>
-
-    <div class="hint">현재역은 GPS로 자동 감지돼요 — 목적지만 고르면 돼요.</div>
+    <button class="btn btn-amber" id="pickStartBtn" disabled>시작</button>
   </div>
 </div>
 
@@ -612,7 +606,7 @@ function showScreen(name){
   document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
   $('screen-'+name).classList.add('active');
   if(name==='alert'){ refreshRouteSelect(); renderRecentQuickStart(); }
-  if(name==='pick') startPickWatch();
+  if(name==='pick'){ startPickWatch(); updatePickStartBtn(); }
   else stopPickWatch();
 }
 
@@ -635,7 +629,7 @@ document.addEventListener('click', (e)=>{
 
 /* ---------- Line chips + diagram picker ---------- */
 let pickLine = null, pickedCur = null, pickedDst = null;
-let pickWatchId = null, autoTrackPaused = false;
+let pickWatchId = null;
 
 function haversinePick(a,b){
   const R=6371000;
@@ -675,6 +669,8 @@ function updateNextStationDisplay(){
   }
   $('nextStationBoard').style.display = 'block';
   $('nextStationLine').innerHTML =
+    `<span style="font-size:15px; color:var(--muted);">${stationLabel(pickedCur)}</span>`+
+    `<span style="color:var(--muted); margin:0 6px;">›</span>`+
     `<span style="font-size:22px; font-weight:700; color:var(--amber);">${stationLabel(next.name)}</span>`;
 }
 
@@ -694,7 +690,6 @@ function startPickWatch(){
   $('gpsAutoDot').className = 'dot on';
   $('gpsAutoStatus').textContent = 'GPS로 현재역을 자동으로 찾는 중...';
   pickWatchId = navigator.geolocation.watchPosition(pos=>{
-    if(autoTrackPaused) return;
     const cur = {lat:pos.coords.latitude, lng:pos.coords.longitude};
 
     let best = null, bestD = Infinity;
@@ -732,7 +727,7 @@ function startPickWatch(){
 function selectLine(code, opts){
   opts = opts || {};
   const L = LINES[code];
-  pickLine = code; pickedCur=null; pickedDst=null; autoTrackPaused=false;
+  pickLine = code; pickedCur=null; pickedDst=null;
   const recent = opts.dest || recentDestinations[code];
   if(recent && L.stations.some(s=>s.name===recent)){
     pickedDst = recent;
@@ -825,11 +820,6 @@ function closeDiagram(){
 
 $('modeDstBtn').addEventListener('click', openDiagram);
 $('diagramCloseBtn').addEventListener('click', closeDiagram);
-$('gpsPauseBtn').addEventListener('click', ()=>{
-  autoTrackPaused = !autoTrackPaused;
-  $('gpsPauseBtn').textContent = autoTrackPaused ? '자동 추적 재개' : '자동 추적 일시정지';
-  $('gpsAutoStatus').textContent = autoTrackPaused ? '자동 추적 일시정지됨' : 'GPS 자동 추적 재개... 위치 확인 중';
-});
 
 function renderDiagram(){
   const box = $('diagram');
@@ -863,10 +853,20 @@ function renderDiagram(){
 }
 
 function updatePickSummary(){
-  $('sumCur').textContent = pickedCur || '-';
-  $('pickStartBtn').disabled = !(pickedCur && pickedDst && pickedCur!==pickedDst);
+  updatePickStartBtn();
   updateNextStationDisplay();
   updateDestStationDisplay();
+}
+
+function updatePickStartBtn(){
+  const btn = $('pickStartBtn');
+  if(running){
+    btn.textContent = '정지';
+    btn.disabled = false;
+  } else {
+    btn.textContent = '시작';
+    btn.disabled = !(pickedCur && pickedDst && pickedCur!==pickedDst);
+  }
 }
 
 function buildSegment(stations, curName, dstName){
@@ -879,6 +879,7 @@ function buildSegment(stations, curName, dstName){
 }
 
 $('pickStartBtn').addEventListener('click', ()=>{
+  if(running){ stopRunning(); return; }
   const seg = buildSegment(LINES[pickLine].stations, pickedCur, pickedDst);
   if(!seg || seg.length<2) return;
   saveRecentDestination(pickLine, pickedDst);
@@ -1152,20 +1153,24 @@ function startRunning(route){
   $('stopsLeft').classList.remove('imminent');
   updateBoard();
   startWatch();
+  updatePickStartBtn();
   if(running.currentIndex === running.destIndex-1){
     fireAlert(running.route.stations[running.destIndex].name);
   }
 }
 
-$('passBtn').addEventListener('click', advanceStation);
-
-$('stopBtn').addEventListener('click', ()=>{
+function stopRunning(){
   if(running && running.watchId!=null) navigator.geolocation.clearWatch(running.watchId);
   running = null;
   $('runningPanel').style.display='none';
   $('idleArea').style.display='block';
   $('board').classList.remove('flash');
-});
+  updatePickStartBtn();
+}
+
+$('passBtn').addEventListener('click', advanceStation);
+
+$('stopBtn').addEventListener('click', stopRunning);
 
 /* ---------- init ---------- */
 renderDraft();
