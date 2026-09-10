@@ -49,6 +49,7 @@
   .line-chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;}
   .chip{padding:8px 14px; border-radius:20px; font-size:13px; font-weight:700; color:#fff; opacity:0.45; cursor:pointer; border:2px solid transparent;}
   .chip.active{opacity:1; border-color:#fff;}
+  .menu-item:active{background:var(--line);}
 
   .mode-row{display:flex; gap:8px; margin-top:14px;}
   .mode-btn{flex:1; padding:10px; border-radius:6px; text-align:center; font-size:12.5px; font-weight:700; border:1px solid var(--line); background:var(--panel); color:var(--muted);}
@@ -100,17 +101,20 @@
 
 <div class="topbar">
   <div class="title">하차 알림</div>
-  <div class="sub" id="gpsMini">GPS 대기</div>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <div class="sub" id="gpsMini">GPS 대기</div>
+    <button id="menuBtn" aria-label="메뉴" style="background:transparent; border:1px solid var(--line); color:var(--text); width:34px; height:34px; border-radius:8px; font-size:18px; font-weight:700; cursor:pointer; line-height:1;">⋯</button>
+  </div>
 </div>
 
-<div class="tabs">
-  <div class="tab active" data-tab="pick">노선에서 선택</div>
-  <div class="tab" data-tab="record">커스텀 기록</div>
-  <div class="tab" data-tab="alert">알림창</div>
+<div id="menuDropdown" style="display:none; position:absolute; top:58px; right:20px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; overflow:hidden; z-index:50; min-width:160px; box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+  <div class="menu-item" data-tab="pick" style="padding:13px 16px; font-size:13.5px; font-weight:600; cursor:pointer; border-bottom:1px solid var(--line);">노선에서 선택</div>
+  <div class="menu-item" data-tab="record" style="padding:13px 16px; font-size:13.5px; font-weight:600; cursor:pointer; border-bottom:1px solid var(--line);">커스텀 기록</div>
+  <div class="menu-item" data-tab="alert" style="padding:13px 16px; font-size:13.5px; font-weight:600; cursor:pointer;">알림창</div>
 </div>
 
 <!-- PICK FROM LINE MAP -->
-<div class="screen active" id="screen-pick">
+<div class="screen" id="screen-pick">
   <div class="field-label">호선 선택</div>
   <div class="line-chips" id="lineChips"></div>
 
@@ -164,12 +168,23 @@
 <!-- ALERT / RUNNING -->
 <div class="screen" id="screen-alert">
   <div id="idleArea">
+    <div id="recentQuickStart" style="display:none;">
+      <div class="field-label">최근 목적지</div>
+      <div class="board" style="text-align:left; padding:16px 18px;">
+        <div class="lbl" id="recentLineLabel">-</div>
+        <div class="dest" id="recentDestLabel" style="font-size:20px; margin:8px 0 0;">-</div>
+      </div>
+      <button class="btn btn-amber" id="recentStartBtn">GPS로 현재역 찾아서 시작</button>
+      <div class="hint">GPS가 안 잡히면 <span id="recentPickManualLink" style="color:var(--amber); text-decoration:underline; cursor:pointer;">노선도에서 직접 현재역 선택</span></div>
+      <div class="section-title">다른 노선으로 시작</div>
+    </div>
+
     <div class="field-label">저장된 커스텀 노선으로 시작</div>
     <select id="routeSelect"><option value="">저장된 노선이 없어요</option></select>
     <div class="field-label" style="margin-top:14px;">하차역(목적지) 선택</div>
     <select id="destSelect"><option value="">먼저 노선을 선택하세요</option></select>
     <button class="btn btn-teal" id="startBtn" disabled>알림 시작</button>
-    <div class="hint">1~9호선은 "노선에서 선택" 탭에서 바로 시작할 수 있어요.</div>
+    <div class="hint">1~9호선은 메뉴의 "노선에서 선택"에서 바로 시작할 수 있어요.</div>
   </div>
 
   <div id="runningPanel" style="display:none;">
@@ -586,17 +601,30 @@ const LINES = {
   ]},
 };
 
-/* ---------- Tabs ---------- */
-document.querySelectorAll('.tab').forEach(t=>{
-  t.addEventListener('click', ()=>{
-    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-    document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
-    t.classList.add('active');
-    $('screen-'+t.dataset.tab).classList.add('active');
-    if(t.dataset.tab==='alert') refreshRouteSelect();
-    if(t.dataset.tab==='pick' && pickLine) startPickWatch();
-    else stopPickWatch();
+/* ---------- Screen switching (menu-driven) ---------- */
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  $('screen-'+name).classList.add('active');
+  if(name==='alert'){ refreshRouteSelect(); renderRecentQuickStart(); }
+  if(name==='pick' && pickLine) startPickWatch();
+  else stopPickWatch();
+}
+
+$('menuBtn').addEventListener('click', ()=>{
+  const dd = $('menuDropdown');
+  dd.style.display = dd.style.display==='none' ? 'block' : 'none';
+});
+document.querySelectorAll('.menu-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    showScreen(item.dataset.tab);
+    $('menuDropdown').style.display = 'none';
   });
+});
+document.addEventListener('click', (e)=>{
+  const dd = $('menuDropdown');
+  if(dd.style.display==='block' && !dd.contains(e.target) && e.target.id!=='menuBtn'){
+    dd.style.display = 'none';
+  }
 });
 
 /* ---------- Line chips + diagram picker ---------- */
@@ -675,6 +703,21 @@ function startPickWatch(){
   }, {enableHighAccuracy:true, maximumAge:3000, timeout:10000});
 }
 
+function selectLine(code, opts){
+  opts = opts || {};
+  const L = LINES[code];
+  pickLine = code; pickedCur=null; pickedDst=null; pickMode='dest'; autoTrackPaused=false;
+  $('pickArea').style.display='block';
+  $('pickEmptyHint').style.display='none';
+  $('gpsPauseBtn').textContent = '자동 추적 일시정지';
+  const recent = opts.dest || recentDestinations[code];
+  if(recent && L.stations.some(s=>s.name===recent)){
+    pickedDst = recent;
+  }
+  renderChips(); renderDiagram(); updateModeBtns(); updatePickSummary(); closeDiagram();
+  startPickWatch();
+}
+
 function renderChips(){
   const wrap = $('lineChips');
   wrap.innerHTML = '';
@@ -684,35 +727,83 @@ function renderChips(){
     c.className = 'chip' + (pickLine===code ? ' active':'');
     c.style.background = L.color;
     c.textContent = L.name;
-    c.addEventListener('click', ()=>{
-      pickLine = code; pickedCur=null; pickedDst=null; pickMode='dest'; autoTrackPaused=false;
-      $('pickArea').style.display='block';
-      $('pickEmptyHint').style.display='none';
-      $('gpsPauseBtn').textContent = '자동 추적 일시정지';
-      const recent = recentDestinations[code];
-      if(recent && L.stations.some(s=>s.name===recent)){
-        pickedDst = recent;
-      }
-      renderChips(); renderDiagram(); updateModeBtns(); updatePickSummary(); closeDiagram();
-      startPickWatch();
-    });
+    c.addEventListener('click', ()=> selectLine(code));
     wrap.appendChild(c);
   });
 }
 
 /* ---------- Recent destination memory ---------- */
 let recentDestinations = {};
+let recentPick = null; // {line, dest} — single most recent overall pick
 async function loadRecentDestinations(){
   try{
     const res = await window.storage.get('recent_destinations', false);
     recentDestinations = res ? JSON.parse(res.value) : {};
   }catch(e){ recentDestinations = {}; }
 }
+async function loadRecentPick(){
+  try{
+    const res = await window.storage.get('recent_pick', false);
+    recentPick = res ? JSON.parse(res.value) : null;
+  }catch(e){ recentPick = null; }
+}
 async function saveRecentDestination(line, destName){
   recentDestinations[line] = destName;
-  try{ await window.storage.set('recent_destinations', JSON.stringify(recentDestinations), false); }
-  catch(e){ console.error('save recent dest failed', e); }
+  recentPick = { line, dest: destName };
+  try{
+    await window.storage.set('recent_destinations', JSON.stringify(recentDestinations), false);
+    await window.storage.set('recent_pick', JSON.stringify(recentPick), false);
+  }catch(e){ console.error('save recent dest failed', e); }
 }
+
+function renderRecentQuickStart(){
+  const box = $('recentQuickStart');
+  if(!recentPick || !LINES[recentPick.line]){
+    box.style.display = 'none';
+    return;
+  }
+  const L = LINES[recentPick.line];
+  box.style.display = 'block';
+  $('recentLineLabel').textContent = L.name;
+  $('recentDestLabel').textContent = recentPick.dest;
+}
+
+$('recentStartBtn').addEventListener('click', ()=>{
+  if(!recentPick) return;
+  const L = LINES[recentPick.line];
+  if(!navigator.geolocation){
+    $('recentStartBtn').textContent = 'GPS를 지원하지 않는 기기예요';
+    return;
+  }
+  $('recentStartBtn').textContent = 'GPS로 현재역 찾는 중...';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const cur = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+    let best=null, bestD=Infinity;
+    L.stations.forEach(s=>{
+      const d = haversinePick(cur, s);
+      if(d<bestD){ bestD=d; best=s; }
+    });
+    $('recentStartBtn').textContent = 'GPS로 현재역 찾아서 시작';
+    if(best && bestD<1000){
+      const seg = buildSegment(L.stations, best.name, recentPick.dest);
+      if(seg && seg.length>=2){
+        stopPickWatch();
+        startRunning({ stations: seg.map(s=>({name:s.name, lat:s.lat, lng:s.lng})) });
+      }
+    } else {
+      alert('이 노선 근처에서 GPS 위치를 찾지 못했어요. "노선도에서 직접 현재역 선택"을 눌러주세요.');
+    }
+  }, ()=>{
+    $('recentStartBtn').textContent = 'GPS로 현재역 찾아서 시작';
+    alert('GPS 권한이 없거나 신호가 없어요. "노선도에서 직접 현재역 선택"을 눌러주세요.');
+  }, {enableHighAccuracy:true, timeout:8000});
+});
+
+$('recentPickManualLink').addEventListener('click', ()=>{
+  if(!recentPick) return;
+  showScreen('pick');
+  selectLine(recentPick.line, {dest: recentPick.dest});
+});
 
 function openDiagram(){
   $('diagram').style.display = 'block';
@@ -801,14 +892,10 @@ $('pickStartBtn').addEventListener('click', ()=>{
   saveRecentDestination(pickLine, pickedDst);
   stopPickWatch();
   startRunning({ stations: seg.map(s=>({name:s.name, lat:s.lat, lng:s.lng})) });
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
-  document.querySelector('.tab[data-tab="alert"]').classList.add('active');
-  $('screen-alert').classList.add('active');
+  showScreen('alert');
 });
 
 renderChips();
-loadRecentDestinations();
 
 /* ---------- Permission status helper ---------- */
 function permHint(state){
@@ -1096,6 +1183,15 @@ $('stopBtn').addEventListener('click', ()=>{
 /* ---------- init ---------- */
 renderDraft();
 loadRoutes();
+(async ()=>{
+  await loadRecentDestinations();
+  await loadRecentPick();
+  if(recentPick && LINES[recentPick.line]){
+    showScreen('alert');
+  } else {
+    showScreen('pick');
+  }
+})();
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
