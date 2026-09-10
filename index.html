@@ -123,7 +123,7 @@
     <span id="autoLineLink" style="display:none; color:var(--amber); text-decoration:underline; cursor:pointer; font-size:12px; margin-left:18px;">자동 감지로 전환</span>
     <div class="board" id="nextStationBoard" style="display:none; padding:14px 16px; margin-top:10px; text-align:left;">
       <div class="lbl">다음 역</div>
-      <div id="nextStationLine" style="font-family:var(--mono); font-size:17px; font-weight:700; margin-top:6px; color:var(--text);">-</div>
+      <div id="nextStationLine" style="font-family:var(--mono); margin-top:6px;">-</div>
     </div>
 
     <div class="mode-row">
@@ -677,7 +677,10 @@ function updateNextStationDisplay(){
     return;
   }
   $('nextStationBoard').style.display = 'block';
-  $('nextStationLine').textContent = `${stationLabel(pickedCur)} -> ${stationLabel(next.name)}`;
+  $('nextStationLine').innerHTML =
+    `<span style="font-size:14px; color:var(--muted);">${stationLabel(pickedCur)}</span>` +
+    `<span style="font-size:14px; color:var(--muted); margin:0 6px;">-></span>` +
+    `<span style="font-size:22px; font-weight:700; color:var(--amber);">${stationLabel(next.name)}</span>`;
 }
 
 function startPickWatch(){
