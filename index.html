@@ -53,7 +53,6 @@
 
   .mode-row{display:flex; gap:8px; margin-top:14px;}
   .mode-btn{flex:1; padding:10px; border-radius:6px; text-align:center; font-size:12.5px; font-weight:700; border:1px solid var(--line); background:var(--panel); color:var(--muted);}
-  .mode-btn.active.cur{border-color:var(--teal); color:var(--teal);}
   .mode-btn.active.dst{border-color:var(--red); color:var(--red);}
 
   .diagram{margin-top:14px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:14px 16px; max-height:340px; overflow-y:auto;}
@@ -131,18 +130,16 @@
 
     <div class="mode-row">
       <div class="mode-btn dst active" id="modeDstBtn">목적지 선택</div>
-      <div class="mode-btn cur" id="modeCurBtn">현재역 수동 선택 (GPS 안될 때)</div>
     </div>
     <div class="diagram" id="diagram" style="display:none;"></div>
     <button class="btn btn-ghost" id="diagramCloseBtn" style="display:none;">노선도 닫기</button>
     <div class="picksum">
       <span>현재역: <b id="sumCur">-</b></span>
-      <span>목적지: <b id="sumDst">-</b></span>
     </div>
     <button class="btn btn-amber" id="pickStartBtn" disabled>이 경로로 알림 시작</button>
     <button class="btn btn-outline" id="gpsPauseBtn" style="margin-top:14px;">자동 추적 일시정지</button>
 
-    <div class="hint">현재역은 GPS로 자동 감지돼요 — 목적지만 고르면 돼요. GPS가 안 되면(지하 구간 등) "현재역 수동 선택"을 쓰세요.</div>
+    <div class="hint">현재역은 GPS로 자동 감지돼요 — 목적지만 고르면 돼요.</div>
   </div>
 </div>
 
@@ -637,7 +634,7 @@ document.addEventListener('click', (e)=>{
 });
 
 /* ---------- Line chips + diagram picker ---------- */
-let pickLine = null, pickMode = 'dest', pickedCur = null, pickedDst = null;
+let pickLine = null, pickedCur = null, pickedDst = null;
 let pickWatchId = null, autoTrackPaused = false;
 
 function haversinePick(a,b){
@@ -728,19 +725,19 @@ function startPickWatch(){
     }
   }, err=>{
     $('gpsAutoDot').className = 'dot off';
-    $('gpsAutoStatus').textContent = 'GPS 권한이 없거나 신호가 없어요. "현재역 수동 선택"을 쓰세요.';
+    $('gpsAutoStatus').textContent = 'GPS 권한이 없거나 신호가 없어요.';
   }, {enableHighAccuracy:true, maximumAge:3000, timeout:10000});
 }
 
 function selectLine(code, opts){
   opts = opts || {};
   const L = LINES[code];
-  pickLine = code; pickedCur=null; pickedDst=null; pickMode='dest'; autoTrackPaused=false;
+  pickLine = code; pickedCur=null; pickedDst=null; autoTrackPaused=false;
   const recent = opts.dest || recentDestinations[code];
   if(recent && L.stations.some(s=>s.name===recent)){
     pickedDst = recent;
   }
-  renderDiagram(); updateModeBtns(); updatePickSummary(); closeDiagram();
+  renderDiagram(); updatePickSummary(); closeDiagram();
   startPickWatch();
 }
 
@@ -826,19 +823,7 @@ function closeDiagram(){
   $('diagramCloseBtn').style.display = 'none';
 }
 
-function updateModeBtns(){
-  $('modeCurBtn').classList.toggle('active', pickMode==='current');
-  $('modeDstBtn').classList.toggle('active', pickMode==='dest');
-}
-$('modeCurBtn').addEventListener('click', ()=>{
-  pickMode='current';
-  autoTrackPaused = true;
-  $('gpsPauseBtn').textContent = '자동 추적 재개';
-  $('gpsAutoStatus').textContent = '자동 추적 일시정지됨 · 노선도에서 현재역을 직접 탭하세요';
-  updateModeBtns();
-  openDiagram();
-});
-$('modeDstBtn').addEventListener('click', ()=>{ pickMode='dest'; updateModeBtns(); openDiagram(); });
+$('modeDstBtn').addEventListener('click', openDiagram);
 $('diagramCloseBtn').addEventListener('click', closeDiagram);
 $('gpsPauseBtn').addEventListener('click', ()=>{
   autoTrackPaused = !autoTrackPaused;
@@ -869,13 +854,8 @@ function renderDiagram(){
     if(name===pickedDst) nm.innerHTML += ' <span class="dtag">● 하차</span>';
     row.appendChild(dot); row.appendChild(nm);
     row.addEventListener('click', ()=>{
-      if(pickMode==='current'){
-        pickedCur = name;
-        pickMode = 'dest';
-      } else {
-        pickedDst = name;
-      }
-      updateModeBtns(); renderDiagram(); updatePickSummary();
+      pickedDst = name;
+      renderDiagram(); updatePickSummary();
       closeDiagram();
     });
     box.appendChild(row);
@@ -884,7 +864,6 @@ function renderDiagram(){
 
 function updatePickSummary(){
   $('sumCur').textContent = pickedCur || '-';
-  $('sumDst').textContent = pickedDst || '-';
   $('pickStartBtn').disabled = !(pickedCur && pickedDst && pickedCur!==pickedDst);
   updateNextStationDisplay();
   updateDestStationDisplay();
