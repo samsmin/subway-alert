@@ -117,9 +117,9 @@
   <div id="pickArea" style="display:none;">
     <div class="status-row" style="margin-top:12px;">
       <div class="dot on" id="gpsAutoDot"></div>
-      <span id="gpsAutoStatus" style="flex:1;">GPS로 현재역을 찾는 중...</span>
+      <span id="gpsAutoStatus" style="flex:1;">GPS 자동 추적 중...</span>
     </div>
-    <button class="btn btn-outline" id="gpsRetryBtn">GPS로 현재역 다시 찾기</button>
+    <button class="btn btn-outline" id="gpsPauseBtn">자동 추적 일시정지</button>
 
     <div class="mode-row">
       <div class="mode-btn dst active" id="modeDstBtn">목적지 지정</div>
@@ -131,7 +131,7 @@
       <span>목적지: <b id="sumDst">-</b></span>
     </div>
     <button class="btn btn-amber" id="pickStartBtn" disabled>이 경로로 알림 시작</button>
-    <div class="hint">GPS로 현재역이 자동으로 잡혀요. 목적지만 노선도에서 탭하면 돼요. GPS가 안 되면(지하 구간 등) "현재역 직접 지정"을 눌러 수동으로 선택하세요.</div>
+    <div class="hint">위치가 바뀔 때마다 GPS로 현재역이 자동으로 갱신돼요 — 버튼을 따로 누를 필요 없어요. 목적지만 노선도에서 탭하면 돼요. GPS가 안 되면(지하 구간 등) "현재역 직접 지정"을 눌러 수동으로 선택하세요.</div>
   </div>
   <div class="hint" id="pickEmptyHint">1~9호선 중 하나를 먼저 선택하세요. 지선·경의중앙선·수인분당선 등은 "커스텀 기록" 탭에서 직접 추가할 수 있어요.</div>
 </div>
@@ -589,11 +589,14 @@ document.querySelectorAll('.tab').forEach(t=>{
     t.classList.add('active');
     $('screen-'+t.dataset.tab).classList.add('active');
     if(t.dataset.tab==='alert') refreshRouteSelect();
+    if(t.dataset.tab==='pick' && pickLine) startPickWatch();
+    else stopPickWatch();
   });
 });
 
 /* ---------- Line chips + diagram picker ---------- */
-let pickLine = null, pickMode = 'dest', pickedCur = null, pickedDst = null, gpsLocating = false;
+let pickLine = null, pickMode = 'dest', pickedCur = null, pickedDst = null;
+let pickWatchId = null, autoTrackPaused = false;
 
 function haversinePick(a,b){
   const R=6371000;
@@ -604,12 +607,17 @@ function haversinePick(a,b){
   return R*2*Math.atan2(Math.sqrt(h), Math.sqrt(1-h));
 }
 
-function autoDetectCurrent(){
+function stopPickWatch(){
+  if(pickWatchId!=null){ navigator.geolocation.clearWatch(pickWatchId); pickWatchId=null; }
+}
+
+function startPickWatch(){
+  stopPickWatch();
   if(!navigator.geolocation || !pickLine) return;
-  gpsLocating = true;
-  $('gpsAutoStatus').textContent = 'GPS로 현재역 찾는 중...';
-  navigator.geolocation.getCurrentPosition(pos=>{
-    gpsLocating = false;
+  $('gpsAutoDot').className = 'dot on';
+  $('gpsAutoStatus').textContent = 'GPS 자동 추적 중... 위치 확인 중';
+  pickWatchId = navigator.geolocation.watchPosition(pos=>{
+    if(autoTrackPaused) return;
     const cur = {lat:pos.coords.latitude, lng:pos.coords.longitude};
     const L = LINES[pickLine];
     let best = null, bestD = Infinity;
@@ -618,17 +626,20 @@ function autoDetectCurrent(){
       if(d < bestD){ bestD = d; best = s; }
     });
     if(best && bestD < 1000){
-      pickedCur = best.name;
-      $('gpsAutoStatus').textContent = `GPS로 "${best.name}"을(를) 현재역으로 자동 설정했어요 (약 ${Math.round(bestD)}m)`;
-      pickMode = 'dest';
-      updateModeBtns(); renderDiagram(); updatePickSummary();
+      $('gpsAutoDot').className = 'dot on';
+      if(pickedCur !== best.name){
+        pickedCur = best.name;
+        renderDiagram(); updatePickSummary();
+      }
+      $('gpsAutoStatus').textContent = `현재역: "${best.name}" (약 ${Math.round(bestD)}m) · 위치가 바뀌면 자동으로 갱신돼요`;
     } else {
-      $('gpsAutoStatus').textContent = '이 노선 근처에서 GPS 위치를 찾지 못했어요. 노선도에서 직접 탭하세요.';
+      $('gpsAutoDot').className = 'dot off';
+      $('gpsAutoStatus').textContent = '이 노선 근처에서 GPS 위치를 찾지 못했어요. 계속 추적 중이에요...';
     }
   }, err=>{
-    gpsLocating = false;
-    $('gpsAutoStatus').textContent = 'GPS 권한이 없거나 신호가 없어요. 노선도에서 현재역을 직접 탭하세요.';
-  }, {enableHighAccuracy:true, timeout:8000});
+    $('gpsAutoDot').className = 'dot off';
+    $('gpsAutoStatus').textContent = 'GPS 권한이 없거나 신호가 없어요. "현재역 직접 지정"으로 선택하세요.';
+  }, {enableHighAccuracy:true, maximumAge:3000, timeout:10000});
 }
 
 function renderChips(){
@@ -641,11 +652,12 @@ function renderChips(){
     c.style.background = L.color;
     c.textContent = L.name;
     c.addEventListener('click', ()=>{
-      pickLine = code; pickedCur=null; pickedDst=null; pickMode='dest';
+      pickLine = code; pickedCur=null; pickedDst=null; pickMode='dest'; autoTrackPaused=false;
       $('pickArea').style.display='block';
       $('pickEmptyHint').style.display='none';
+      $('gpsPauseBtn').textContent = '자동 추적 일시정지';
       renderChips(); renderDiagram(); updateModeBtns(); updatePickSummary();
-      autoDetectCurrent();
+      startPickWatch();
     });
     wrap.appendChild(c);
   });
@@ -655,9 +667,19 @@ function updateModeBtns(){
   $('modeCurBtn').classList.toggle('active', pickMode==='current');
   $('modeDstBtn').classList.toggle('active', pickMode==='dest');
 }
-$('modeCurBtn').addEventListener('click', ()=>{ pickMode='current'; updateModeBtns(); });
+$('modeCurBtn').addEventListener('click', ()=>{
+  pickMode='current';
+  autoTrackPaused = true;
+  $('gpsPauseBtn').textContent = '자동 추적 재개';
+  $('gpsAutoStatus').textContent = '자동 추적 일시정지됨 · 노선도에서 현재역을 직접 탭하세요';
+  updateModeBtns();
+});
 $('modeDstBtn').addEventListener('click', ()=>{ pickMode='dest'; updateModeBtns(); });
-$('gpsRetryBtn').addEventListener('click', autoDetectCurrent);
+$('gpsPauseBtn').addEventListener('click', ()=>{
+  autoTrackPaused = !autoTrackPaused;
+  $('gpsPauseBtn').textContent = autoTrackPaused ? '자동 추적 재개' : '자동 추적 일시정지';
+  $('gpsAutoStatus').textContent = autoTrackPaused ? '자동 추적 일시정지됨' : 'GPS 자동 추적 재개... 위치 확인 중';
+});
 
 function renderDiagram(){
   const box = $('diagram');
@@ -712,6 +734,7 @@ function buildSegment(stations, curName, dstName){
 $('pickStartBtn').addEventListener('click', ()=>{
   const seg = buildSegment(LINES[pickLine].stations, pickedCur, pickedDst);
   if(!seg || seg.length<2) return;
+  stopPickWatch();
   startRunning({ stations: seg.map(s=>({name:s.name, lat:s.lat, lng:s.lng})) });
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
